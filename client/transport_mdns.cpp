@@ -46,10 +46,11 @@
 #include "adb_trace.h"
 #include "adb_utils.h"
 #include "adb_wifi.h"
+#include "client/discovered_services.h"
 #include "client/mdns_utils.h"
 #include "client/openscreen/platform/task_runner.h"
-#include "discovered_services.h"
 #include "fdevent/fdevent.h"
+#include "mdns_tracker.h"
 #include "sysdeps.h"
 
 namespace {
@@ -121,6 +122,8 @@ void OnServiceReceiverResult(std::vector<std::reference_wrapper<const ServiceInf
             break;
         }
     }
+
+    update_mdns_trackers();
 
     switch (state) {
         case ServicesUpdatedState::EndpointCreated:

@@ -103,6 +103,7 @@ const char* const kFeatureDeviceTrackerProtoFormat = "devicetracker_proto_format
 const char* const kFeatureDevRaw = "devraw";
 const char* const kFeatureAppInfo = "app_info";  // Add information to track-app (package name, ...)
 const char* const kFeatureServerStatus = "server_status";  // Ability to output server status
+const char* const kFeatureTrackMdns = "track_mdns";        // Track and stream mdns services.
 
 namespace {
 
@@ -1229,6 +1230,7 @@ const FeatureSet& supported_features() {
             kFeatureDevRaw,
             kFeatureAppInfo,
             kFeatureServerStatus,
+            kFeatureTrackMdns,
         };
         // clang-format on
 

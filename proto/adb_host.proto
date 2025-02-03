@@ -92,3 +92,36 @@ message AdbServerStatus {
      optional string known_hosts_path = 14;
 }
 
+message MdnsServices {
+    repeated ServiceAdbTcp tcp = 1;
+    repeated ServiceAdbTls tls = 2;
+    repeated ServiceAdbPairing pair = 3;
+}
+
+message ServiceAdbTcp {
+    MdnsService service = 1;
+}
+
+message ServiceAdbTls {
+    MdnsService service = 1 ;
+    // If this device has previously been paired, it is considered a known device.
+    bool known_device = 2;
+}
+
+message ServiceAdbPairing {
+    MdnsService service = 1;
+}
+
+message MdnsService {
+    string instance = 1;
+    string service = 2;
+    string domain = 3;
+    optional string ipv4 = 4;
+    repeated string ipv6 = 5;
+    uint32 port = 6;
+    optional string device_model = 7;
+    optional string build_version_sdk = 8;
+}
+
+
+

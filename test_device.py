@@ -1856,6 +1856,22 @@ class DevicesListing(DeviceTest):
 
             proc.terminate()
 
+class MdnsTracking(DeviceTest):
+    def test_track_mdns_proto_binary(self):
+        with subprocess.Popen(['adb', 'mdns' ,'track-services', '--proto-binary'], stdin=subprocess.PIPE, stdout=subprocess.PIPE) as proc:
+            output_size = int(proc.stdout.read(4).decode("utf-8"), 16)
+            self.assertTrue(output_size == 0)
+            #TODO Use a mdns client to publish fake services and detect them here
+            proc.kill()
+
+    def test_track_mdns_proto_text(self):
+        with subprocess.Popen(['adb', 'mdns' ,'track-services', '--proto-text'], stdin=subprocess.PIPE, stdout=subprocess.PIPE) as proc:
+            with io.TextIOWrapper(proc.stdout, encoding='utf8') as reader:
+               out = reader.read(9)
+               #TODO Use a mdns client to publish fake services and detect them here
+               self.assertTrue("Services" in out)
+               proc.kill()
+
 def invoke(*args):
     print(args)
     try:
