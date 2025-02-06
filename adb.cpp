@@ -1371,6 +1371,8 @@ HostRequestResult handle_host_request(std::string_view service, TransportType ty
         status.set_executable_absolute_path(android::base::GetExecutablePath());
         status.set_log_absolute_path(GetLogFilePath());
         status.set_os(GetOSVersion());
+        status.set_burst_mode(delayed_ack_enabled());
+        status.set_trace_level(get_trace_setting());
 
         std::string server_status_string;
         status.SerializeToString(&server_status_string);
