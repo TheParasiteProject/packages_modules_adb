@@ -80,4 +80,29 @@ Host(ASB=X-c)       < A_OKAY(<b>)             < Device
 Host(ASB=X)         < A_OKAY(<c>)             < Device
 ```
 
+# Results
 
+Initial testing show that Burst Mode is nearly 70% faster at pushing files to a device over a USB-3 cable.
+
+## Before
+```
+$ adb kill-server && unset ADB_BURST_MODE && adb start-server
+$ adb push -Z ~/Desktop/10G1 /data/local/tmp
+/usr/local/google/home/sanglardf/Desktop/10G1: 1 file pushed, 0 skipped. 202.0 MB/s (10737418240 bytes in 50.701s)
+$ adb push -Z ~/Desktop/10G1 /data/local/tmp
+/usr/local/google/home/sanglardf/Desktop/10G1: 1 file pushed, 0 skipped. 205.9 MB/s (10737418240 bytes in 49.724s)
+$ adb push -Z ~/Desktop/10G1 /data/local/tmp
+/usr/local/google/home/sanglardf/Desktop/10G1: 1 file pushed, 0 skipped. 197.6 MB/s (10737418240 bytes in 51.828s)
+```
+
+## After
+
+```
+$ adb kill-server && export ADB_BURST_MODE=1 && adb start-server
+$ adb push -Z ~/Desktop/10G1 /data/local/tmp
+/usr/local/google/home/sanglardf/Desktop/10G1: 1 file pushed, 0 skipped. 337.2 MB/s (10737418240 bytes in 30.365s)
+$ adb push -Z ~/Desktop/10G1 /data/local/tmp
+/usr/local/google/home/sanglardf/Desktop/10G1: 1 file pushed, 0 skipped. 342.0 MB/s (10737418240 bytes in 29.945s)
+$ adb push -Z ~/Desktop/10G1 /data/local/tmp
+/usr/local/google/home/sanglardf/Desktop/10G1: 1 file pushed, 0 skipped. 341.3 MB/s (10737418240 bytes in 30.000s)
+```
