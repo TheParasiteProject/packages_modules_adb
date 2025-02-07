@@ -12,7 +12,7 @@ In that CL, the protocol was updated to remove the requirement for CRC generatio
 This does not affect the reliability of a transport since both USB and TCP have packet checksums of their own.
 
 The second issue is solved by "delayed ACK" ([aosp/1953877](https://android-review.googlesource.com/q/1953877)),
-an experimental feature controlled by the environment variable `ADB_DELAYED_ACK`.
+an experimental feature controlled by the environment variable `ADB_BURST_MODE`.
 
 # How delayed ACK works
 
