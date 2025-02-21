@@ -35,6 +35,7 @@
 #include <android-base/scopeguard.h>
 #include <openssl/base64.h>
 
+#include "adb_install.h"
 #include "adb_unique_fd.h"
 #include "commandline.h"
 #include "incremental_utils.h"
@@ -109,7 +110,8 @@ class ISUnsignedDatabaseEntry : public ISDatabaseEntry {
 
 static bool requires_v4_signature(const std::string& file) {
     // Signature has to be present for APKs.
-    return android::base::EndsWithIgnoreCase(file, ".apk");
+    return android::base::EndsWithIgnoreCase(file, ".apk") ||
+           android::base::EndsWithIgnoreCase(file, kSdmExtension);
 }
 
 // Read and return the signature bytes and the tree size.
