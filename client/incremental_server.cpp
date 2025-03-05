@@ -18,8 +18,6 @@
 
 #include "incremental_server.h"
 
-#include <android-base/endian.h>
-#include <android-base/strings.h>
 #include <inttypes.h>
 #include <lz4.h>
 #include <stdio.h>
@@ -33,6 +31,9 @@
 #include <thread>
 #include <type_traits>
 #include <unordered_set>
+
+#include <android-base/endian.h>
+#include <android-base/strings.h>
 
 #include "adb.h"
 #include "adb_client.h"
@@ -680,7 +681,14 @@ static std::pair<unique_fd, int64_t> open_signature(int64_t file_size, const cha
         return {};
     }
 
-    auto [tree_offset, tree_size] = skip_id_sig_headers(fd);
+    std::string error;
+    auto res = skip_id_sig_headers(fd, &error);
+    if (!res.has_value()) {
+        D("Invalid signature file '%s': %s", filepath, error.c_str());
+        return {};
+    }
+
+    auto [tree_offset, tree_size] = std::move(res.value());
     if (auto expected = verity_tree_size_for_file(file_size); tree_size != expected) {
         error_exit("Verity tree size mismatch in signature file: %s [was %lld, expected %lld].\n",
                    signature_file.c_str(), (long long)tree_size, (long long)expected);

@@ -68,11 +68,12 @@ This problem is solved with V4 signing which does not discard the merkle tree
 but embed it in the signed file and also outputs the top merkle node hash in
 a .idsig file.
 
-Upon installation the whole merkel tree from V4 is given to `pm` which forwards
+Upon installation the whole merkle tree from V4 is given to `pm` which forwards
 it to the Android kernel. The kernel is in charge of verifying the integrity
 of each block when they are received from the `IS` via the merkle tree.
 
 For more details about v4 signing, refer to [APK signature scheme v4](https://source.android.com/docs/security/features/apksigning/v4) page.
+
 ## How ADB performs incremental-install
 
 To perform incremental-install, ADB needs to do two things.
@@ -81,20 +82,20 @@ To perform incremental-install, ADB needs to do two things.
 - Start a `IS`.
 
 ```
-  ┌───┐                              ┌────┐      
-  │adb│                              │ppm │      
-  └─┬─┘                              └─┬──┘      
-    │       pm install-incremental     │         
-    ├─────────────────────────────────►│         
-    │    ┌────┐                        │         
-    ├───►│ IS │                        │         
-    │    └─┬──┘                        │         
-    X      │                           │         
-           ├──────────────────────────►│         
-           ├──────────────────────────►│         
-           │◄──────────────────────────┤         
-           ├──────────────────────────►│         
-           │                           │         
+  ┌───┐                              ┌────┐
+  │adb│                              │ppm │
+  └─┬─┘                              └─┬──┘
+    │       pm install-incremental     │
+    ├─────────────────────────────────►│
+    │    ┌────┐                        │
+    ├───►│ IS │                        │
+    │    └─┬──┘                        │
+    X      │                           │
+           ├──────────────────────────►│
+           ├──────────────────────────►│
+           │◄──────────────────────────┤
+           ├──────────────────────────►│
+           │                           │
 ```
 
 ### Local database
@@ -112,7 +113,16 @@ where
 - `file_id` is the identified that will be used by the kernel for block
 requests. There is one arg for each file to be streamed.
 - `signature` is the top merkle hash.
-- `[:protocol_version]` is optional.
+- `[:protocol_version]` is optional. (default: 0)
+
+#### Protocol version
+
+If `protocol_version` is 0, the merkle tree of the file is not sent via the `IS`
+but instead sent on stdin, before the `IS` is started.
+
+If `protocol_version` is 1, the merkle tree of the file is sent via the `IS`.
+
+The current implementation of ADB only uses version 1.
 
 ### Unsigned files
 
@@ -120,30 +130,30 @@ There could be unsigned files to be installed. In this case, `pm` has to be made
 aware of them via a special arg format.
 
 ```
-filename::file_size:file_id
+filename:file_size:file_id
 ```
 
 These files are not sent via the `IS` but instead sent on stdin, before
 the `IS` is started.
 
 ```
-  ┌───┐                              ┌────┐      
-  │adb│                              │ppm │      
-  └─┬─┘                              └─┬──┘      
-    │       pm install-incremental     │         
-    ├─────────────────────────────────►│         
-    │                                  │         
-    │       (stdin) write(unsigned)    │         
-    ├─────────────────────────────────►│         
-    │    ┌────┐                        │         
-    ├───►│ IS │                        │         
-    │    └─┬──┘                        │         
-    X      │                           │         
-           ├──────────────────────────►│         
-           ├──────────────────────────►│         
-           │◄──────────────────────────┤         
-           ├──────────────────────────►│         
-           │                           │         
+  ┌───┐                              ┌────┐
+  │adb│                              │ppm │
+  └─┬─┘                              └─┬──┘
+    │       pm install-incremental     │
+    ├─────────────────────────────────►│
+    │                                  │
+    │       (stdin) write(unsigned)    │
+    ├─────────────────────────────────►│
+    │    ┌────┐                        │
+    ├───►│ IS │                        │
+    │    └─┬──┘                        │
+    X      │                           │
+           ├──────────────────────────►│
+           ├──────────────────────────►│
+           │◄──────────────────────────┤
+           ├──────────────────────────►│
+           │                           │
 ```
 
 ## Learn more
