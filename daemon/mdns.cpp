@@ -34,7 +34,10 @@
 using namespace std::chrono_literals;
 
 static std::mutex& mdns_lock = *new std::mutex();
-static int port;
+
+// TCP socket port ADBd is listening for incoming connections
+static int tcp_port;
+
 static DNSServiceRef mdns_refs[kNumADBDNSServices];
 static bool mdns_registered[kNumADBDNSServices];
 
@@ -117,7 +120,7 @@ static void unregister_mdns_service(int index) {
 static void register_base_mdns_transport() {
     std::string hostname = "adb-";
     hostname += android::base::GetProperty("ro.serialno", "unidentified");
-    register_mdns_service(kADBTransportServiceRefIndex, port, hostname);
+    register_mdns_service(kADBTransportServiceRefIndex, tcp_port, hostname);
 }
 
 static void setup_mdns_thread() {
@@ -183,25 +186,25 @@ static std::string ReadDeviceGuid() {
 
 // Public interface/////////////////////////////////////////////////////////////
 
-void setup_mdns(int port_in) {
+void setup_mdns(int tcp_port_in) {
     // Make sure the adb wifi guid is generated.
     std::string guid = ReadDeviceGuid();
     CHECK(!guid.empty());
-    port = port_in;
+    tcp_port = tcp_port_in;
     std::thread(setup_mdns_thread).detach();
 
     // TODO: Make this more robust against a hard kill.
     atexit(teardown_mdns);
 }
 
-void register_adb_secure_connect_service(int port) {
-    std::thread([port]() {
+void register_adb_secure_connect_service(int tls_port) {
+    std::thread([tls_port]() {
         auto service_name = ReadDeviceGuid();
         if (service_name.empty()) {
             return;
         }
         LOG(INFO) << "Registering secure_connect service (" << service_name << ")";
-        register_mdns_service(kADBSecureConnectServiceRefIndex, port, service_name);
+        register_mdns_service(kADBSecureConnectServiceRefIndex, tls_port, service_name);
     }).detach();
 }
 
