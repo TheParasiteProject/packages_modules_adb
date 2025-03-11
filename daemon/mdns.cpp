@@ -15,6 +15,7 @@
  */
 
 #include "mdns.h"
+
 #include "adb_mdns.h"
 #include "sysdeps.h"
 
@@ -62,37 +63,33 @@ static void mdns_callback(DNSServiceRef /*ref*/,
     }
 }
 
+static std::vector<char> buildTxtRecord() {
+    std::map<std::string, std::string> attributes;
+    attributes["v"] = std::to_string(ADB_SECURE_SERVICE_VERSION);
+    attributes["name"] = android::base::GetProperty("ro.product.model", "");
+    attributes["api"] = android::base::GetProperty("ro.build.version.sdk", "");
+
+    // See https://tools.ietf.org/html/rfc6763 for the format of DNS TXT record.
+    std::vector<char> record;
+    for (auto const& [key, val] : attributes) {
+        size_t length = key.size() + val.size() + 1;
+        if (length > 255) {
+            LOG(INFO) << "DNS TXT Record property " << key << "='" << val << "' is too large.";
+            continue;
+        }
+        record.emplace_back(length);
+        std::copy(key.begin(), key.end(), std::back_inserter(record));
+        record.emplace_back('=');
+        std::copy(val.begin(), val.end(), std::back_inserter(record));
+    }
+
+    return record;
+}
+
 static void register_mdns_service(int index, int port, const std::string& service_name) {
     std::lock_guard<std::mutex> lock(mdns_lock);
 
-
-    // https://tools.ietf.org/html/rfc6763
-    // """
-    // The format of the data within a DNS TXT record is one or more
-    // strings, packed together in memory without any intervening gaps or
-    // padding bytes for word alignment.
-    //
-    // The format of each constituent string within the DNS TXT record is a
-    // single length byte, followed by 0-255 bytes of text data.
-    // """
-    //
-    // Therefore:
-    // 1. Begin with the string length
-    // 2. No null termination
-
-    std::vector<char> txtRecord;
-
-    if (kADBDNSServiceTxtRecords[index]) {
-        size_t txtRecordStringLength = strlen(kADBDNSServiceTxtRecords[index]);
-
-        txtRecord.resize(1 +                    // length byte
-                         txtRecordStringLength  // string bytes
-        );
-
-        txtRecord[0] = (char)txtRecordStringLength;
-        memcpy(txtRecord.data() + 1, kADBDNSServiceTxtRecords[index], txtRecordStringLength);
-    }
-
+    auto txtRecord = buildTxtRecord();
     auto error = DNSServiceRegister(
             &mdns_refs[index], 0, 0, service_name.c_str(), kADBDNSServices[index], nullptr, nullptr,
             htobe16((uint16_t)port), (uint16_t)txtRecord.size(),
