@@ -30,6 +30,7 @@
 
 #include <android-base/logging.h>
 #include <android-base/properties.h>
+#include <android-base/thread_annotations.h>
 
 using namespace std::chrono_literals;
 
@@ -38,8 +39,8 @@ static std::mutex& mdns_lock = *new std::mutex();
 // TCP socket port ADBd is listening for incoming connections
 static int tcp_port;
 
-static DNSServiceRef mdns_refs[kNumADBDNSServices];
-static bool mdns_registered[kNumADBDNSServices];
+static DNSServiceRef mdns_refs[kNumADBDNSServices] GUARDED_BY(mdns_lock);
+static bool mdns_registered[kNumADBDNSServices] GUARDED_BY(mdns_lock);
 
 void start_mdnsd() {
     if (android::base::GetProperty("init.svc.mdnsd", "") == "running") {
