@@ -60,16 +60,10 @@ using ServicesUpdatedState = ServiceWatcher::ServicesUpdatedState;
 
 struct DiscoveryState;
 DiscoveryState* g_state = nullptr;
-// TODO: remove once openscreen has bonjour client APIs.
-bool g_using_bonjour = false;
-AdbMdnsResponderFuncs g_adb_mdnsresponder_funcs;
 
 class DiscoveryReportingClient : public discovery::ReportingClient {
   public:
     void OnFatalError(Error error) override {
-        // The multicast port 5353 may fail to bind because of another process already binding
-        // to it (bonjour). So let's fallback to bonjour client APIs.
-        // TODO: Remove this once openscreen implements the bonjour client APIs.
         LOG(ERROR) << "Encountered fatal discovery error: " << error;
         got_fatal_ = true;
     }
@@ -192,14 +186,8 @@ void StartDiscovery() {
                         w->StopDiscovery();
                     }
                 }
-                g_using_bonjour = true;
                 break;
             }
-        }
-
-        if (g_using_bonjour) {
-            VLOG(MDNS) << "Fallback to MdnsResponder client for discovery";
-            g_adb_mdnsresponder_funcs = StartMdnsResponderDiscovery();
         }
     });
 }
@@ -238,21 +226,12 @@ bool ConnectAdbSecureDevice(const MdnsInfo& info) {
 
 /////////////////////////////////////////////////////////////////////////////////
 
-bool using_bonjour(void) {
-    return g_using_bonjour;
-}
-
-void mdns_cleanup() {
-    if (g_using_bonjour) {
-        return g_adb_mdnsresponder_funcs.mdns_cleanup();
-    }
-}
+void mdns_cleanup() {}
 
 void init_mdns_transport_discovery() {
     const char* mdns_osp = getenv("ADB_MDNS_OPENSCREEN");
     if (mdns_osp && strcmp(mdns_osp, "0") == 0) {
-        g_using_bonjour = true;
-        g_adb_mdnsresponder_funcs = StartMdnsResponderDiscovery();
+        LOG(WARNING) << "Environment variable ADB_MDNS_OPENSCREEN disregarded";
     } else {
         VLOG(MDNS) << "Openscreen mdns discovery enabled";
         StartDiscovery();
@@ -260,10 +239,6 @@ void init_mdns_transport_discovery() {
 }
 
 bool adb_secure_connect_by_service_name(const std::string& instance_name) {
-    if (g_using_bonjour) {
-        return g_adb_mdnsresponder_funcs.adb_secure_connect_by_service_name(instance_name);
-    }
-
     if (!g_state || g_state->watchers.empty()) {
         VLOG(MDNS) << "Mdns not enabled";
         return false;
@@ -281,22 +256,14 @@ bool adb_secure_connect_by_service_name(const std::string& instance_name) {
 }
 
 std::string mdns_check() {
-    if (!g_state && !g_using_bonjour) {
+    if (!g_state) {
         return "ERROR: mdns discovery disabled";
-    }
-
-    if (g_using_bonjour) {
-        return g_adb_mdnsresponder_funcs.mdns_check();
     }
 
     return "mdns daemon version [Openscreen discovery 0.0.0]";
 }
 
 std::string mdns_list_discovered_services() {
-    if (g_using_bonjour) {
-        return g_adb_mdnsresponder_funcs.mdns_list_discovered_services();
-    }
-
     if (!g_state || g_state->watchers.empty()) {
         return "";
     }
@@ -316,10 +283,6 @@ std::string mdns_list_discovered_services() {
 
 std::optional<MdnsInfo> mdns_get_connect_service_info(const std::string& name) {
     CHECK(!name.empty());
-
-    if (g_using_bonjour) {
-        return g_adb_mdnsresponder_funcs.mdns_get_connect_service_info(name);
-    }
 
     if (!g_state || g_state->watchers.empty()) {
         return std::nullopt;
@@ -369,10 +332,6 @@ std::optional<MdnsInfo> mdns_get_connect_service_info(const std::string& name) {
 
 std::optional<MdnsInfo> mdns_get_pairing_service_info(const std::string& name) {
     CHECK(!name.empty());
-
-    if (g_using_bonjour) {
-        return g_adb_mdnsresponder_funcs.mdns_get_pairing_service_info(name);
-    }
 
     if (!g_state || g_state->watchers.empty()) {
         return std::nullopt;
