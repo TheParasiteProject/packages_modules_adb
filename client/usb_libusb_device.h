@@ -85,6 +85,9 @@ struct LibUsbDevice {
 
     static USBSessionID GenerateSessionId(libusb_device* device);
 
+    // Clears halt condition for endpoints
+    void ClearEndpoints();
+
   private:
     // Make sure device is and Android device, retrieve OS address, retrieve Android serial.
     void Init();
