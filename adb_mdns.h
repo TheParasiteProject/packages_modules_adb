@@ -68,16 +68,6 @@ void mdns_cleanup();
 std::string mdns_check();
 std::string mdns_list_discovered_services();
 
-struct MdnsInfo {
-    std::string service_name;
-    std::string service_type;
-    std::string addr;
-    uint16_t port = 0;
-
-    MdnsInfo(std::string_view name, std::string_view type, std::string_view addr, uint16_t port)
-        : service_name(name), service_type(type), addr(addr), port(port) {}
-};
-
-std::optional<MdnsInfo> mdns_get_connect_service_info(const std::string& name);
-std::optional<MdnsInfo> mdns_get_pairing_service_info(const std::string& name);
+std::optional<mdns::ServiceInfo> mdns_get_connect_service_info(const std::string& name);
+std::optional<mdns::ServiceInfo> mdns_get_pairing_service_info(const std::string& name);
 #endif  // ADB_HOST

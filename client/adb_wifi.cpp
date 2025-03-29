@@ -226,10 +226,9 @@ void adb_wifi_pair_device(const std::string& host, const std::string& password,
 
     PairingResultWaiter waiter;
     std::unique_lock<std::mutex> lock(waiter.mutex_);
-    if (!client->Start(mdns_info.has_value()
-                               ? android::base::StringPrintf("%s:%d", mdns_info->addr.c_str(),
-                                                             mdns_info->port)
-                               : host,
+    if (!client->Start(mdns_info.has_value() ? std::format("{}:{}", mdns_info->v4_address_string(),
+                                                           mdns_info->port)
+                                             : host,
                        waiter.OnResult, &waiter)) {
         response = "Failed: Unable to start pairing client.";
         return;
