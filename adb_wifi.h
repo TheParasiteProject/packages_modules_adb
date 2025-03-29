@@ -33,5 +33,6 @@ struct AdbdAuthContext;
 
 void adbd_wifi_init(AdbdAuthContext* ctx);
 void adbd_wifi_secure_connect(atransport* t);
+void adbd_send_tls_server_port(uint16_t port);
 
 #endif

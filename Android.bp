@@ -30,12 +30,6 @@ license {
     ],
 }
 
-tidy_errors = [
-    "-*",
-    "bugprone-inaccurate-erase",
-    "bugprone-use-after-move",
-]
-
 cc_defaults {
     name: "adb_defaults",
 
@@ -104,10 +98,6 @@ cc_defaults {
             ],
         },
     },
-
-    tidy: true,
-    tidy_checks: tidy_errors,
-    tidy_checks_as_errors: tidy_errors,
 }
 
 cc_defaults {

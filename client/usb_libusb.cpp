@@ -42,6 +42,12 @@ LibUsbConnection::~LibUsbConnection() {
 
 void LibUsbConnection::OnError(const std::string& reason) {
     std::call_once(this->error_flag_, [this, reason]() {
+        // Clears halt condition for endpoints when an error is encountered. This logic was moved
+        // here from LibUsbDevice::ClaimInterface() where calling it as part of the open device
+        // flow would cause some devices to enter a state where communication was broken. See issue
+        // https://issuetracker.google.com/issues/404741058
+        device_->ClearEndpoints();
+
         // When a Windows machine goes to sleep it powers off all its USB host controllers to save
         // energy. When the machine awakens, it powers them up which causes all the endpoints
         // to be closed (which generates a read/write failure leading to us Close()ing the device).

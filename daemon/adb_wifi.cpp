@@ -146,7 +146,6 @@ void TlsServer::OnFdEvent(int fd, unsigned ev) {
 }
 
 TlsServer* sTlsServer = nullptr;
-const char kWifiPortProp[] = "service.adb.tls.port";
 
 const char kWifiEnabledProp[] = "persist.adb.tls_server.enable";
 
@@ -167,7 +166,7 @@ static void enable_wifi_debugging() {
     // Start mdns connect service for discovery
     register_adb_secure_connect_service(sTlsServer->port());
     LOG(INFO) << "adb wifi started on port " << sTlsServer->port();
-    SetProperty(kWifiPortProp, std::to_string(sTlsServer->port()));
+    adbd_send_tls_server_port(sTlsServer->port());
 }
 
 static void disable_wifi_debugging() {
@@ -180,7 +179,7 @@ static void disable_wifi_debugging() {
     }
     kick_all_tcp_tls_transports();
     LOG(INFO) << "adb wifi stopped";
-    SetProperty(kWifiPortProp, "");
+    adbd_send_tls_server_port(0);
 }
 
 // Watches for the #kWifiEnabledProp property to toggle the TlsServer
@@ -221,4 +220,12 @@ void adbd_wifi_secure_connect(atransport* t) {
     LOG(INFO) << __func__ << ": connected " << t->serial;
     t->auth_id = adbd_auth_tls_device_connected(auth_ctx, kAdbTransportTypeWifi, t->auth_key.data(),
                                                 t->auth_key.size());
+}
+
+void adbd_send_tls_server_port(uint16_t port) {
+    if (__builtin_available(android 37, *)) {
+        adbd_auth_send_tls_server_port(auth_ctx, port);
+    } else {
+        LOG(WARNING) << "Unable to advertise TLS port, API unavailable";
+    }
 }

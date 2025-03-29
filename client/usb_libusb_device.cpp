@@ -330,6 +330,27 @@ bool LibUsbDevice::RetrieveSerial() {
     return true;
 }
 
+// Clear halt condition for endpoints
+void LibUsbDevice::ClearEndpoints() {
+    if (device_handle_ == nullptr) {
+        VLOG(USB) << "cannot clear device endpoints, invalid device handle";
+        return;
+    }
+
+    if (!interface_claimed_) {
+        VLOG(USB) << "cannot clear device endpoints, adb interface not claimed";
+        return;
+    }
+
+    for (uint8_t endpoint : {read_endpoint_, write_endpoint_}) {
+        int rc = libusb_clear_halt(device_handle_, endpoint);
+        if (rc != 0) {
+            VLOG(USB) << "failed to clear halt on device " << serial_ << " endpoint "
+                      << StringPrintf("%#x", endpoint) << ": " << libusb_error_name(rc);
+        }
+    }
+}
+
 // libusb gives us an int which is a value from 'enum libusb_speed'
 static uint64_t ToConnectionSpeed(int speed) {
     switch (speed) {
@@ -465,16 +486,6 @@ bool LibUsbDevice::ClaimInterface() {
         VLOG(USB) << "failed to claim adb interface for device " << serial_.c_str() << ":"
                   << libusb_error_name(rc);
         return false;
-    }
-
-    for (uint8_t endpoint : {read_endpoint_, write_endpoint_}) {
-        rc = libusb_clear_halt(device_handle_, endpoint);
-        if (rc != 0) {
-            VLOG(USB) << "failed to clear halt on device " << serial_ << " endpoint" << endpoint
-                      << ": " << libusb_error_name(rc);
-            libusb_release_interface(device_handle_, interface_num_);
-            return false;
-        }
     }
 
     VLOG(USB) << "Claimed interface for " << GetSerial() << ", "
