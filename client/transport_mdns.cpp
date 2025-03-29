@@ -48,6 +48,7 @@
 #include "adb_wifi.h"
 #include "client/mdns_utils.h"
 #include "client/openscreen/platform/task_runner.h"
+#include "discovered_services.h"
 #include "fdevent/fdevent.h"
 #include "sysdeps.h"
 
@@ -88,13 +89,23 @@ struct DiscoveryState {
 };
 
 // Callback provided to service receiver for updates.
-void OnServiceReceiverResult(std::vector<std::reference_wrapper<const ServiceInfo>> infos,
+void OnServiceReceiverResult(std::vector<std::reference_wrapper<const ServiceInfo>>,
                              std::reference_wrapper<const ServiceInfo> info,
                              ServicesUpdatedState state) {
-    VLOG(MDNS) << "Endpoint state=" << static_cast<int>(state)
-               << " instance_name=" << info.get().instance << " service_name=" << info.get().service
-               << " addr=" << info.get().v4_address << " addrv6=" << info.get().v6_address
-               << " total_serv=" << infos.size();
+    switch (state) {
+        case ServicesUpdatedState::EndpointCreated: {
+            discovered_services.ServiceCreated(info);
+            break;
+        }
+        case ServicesUpdatedState::EndpointUpdated: {
+            discovered_services.ServiceUpdated(info);
+            break;
+        }
+        case ServicesUpdatedState::EndpointDeleted: {
+            discovered_services.ServiceDeleted(info);
+            break;
+        }
+    }
 
     switch (state) {
         case ServicesUpdatedState::EndpointCreated:
@@ -116,8 +127,7 @@ void OnServiceReceiverResult(std::vector<std::reference_wrapper<const ServiceInf
                 VLOG(MDNS) << "Attempting to auto-connect to instance=" << info.get().instance
                            << " service=" << info.get().service << " addr4=%s"
                            << info.get().v4_address << ":" << info.get().port;
-                connect_device(android::base::StringPrintf("%s.%s", info.get().instance.c_str(),
-                                                           info.get().service.c_str()),
+                connect_device(std::format("{}.{}", info.get().instance, info.get().service),
                                &response);
             }
             break;
@@ -189,21 +199,6 @@ void StartDiscovery() {
     });
 }
 
-void ForEachService(const std::unique_ptr<ServiceWatcher>& receiver,
-                    std::string_view wanted_instance_name, adb_secure_foreach_service_callback cb) {
-    if (!receiver->is_running()) {
-        return;
-    }
-    auto services = receiver->GetServices();
-    for (const auto& s : services) {
-        if (wanted_instance_name.empty() || s.get().instance == wanted_instance_name) {
-            std::stringstream ss;
-            ss << s.get().v4_address;
-            cb(s.get());
-        }
-    }
-}
-
 bool ConnectAdbSecureDevice(const ServiceInfo& info) {
     if (!adb_wifi_is_known_host(info.instance)) {
         VLOG(MDNS) << "serviceName=" << info.instance << " not in keystore";
@@ -211,9 +206,7 @@ bool ConnectAdbSecureDevice(const ServiceInfo& info) {
     }
 
     std::string response;
-    connect_device(
-            android::base::StringPrintf("%s.%s", info.instance.c_str(), info.service.c_str()),
-            &response);
+    connect_device(std::format("{}.{}", info.instance, info.service), &response);
     std::string debug_message =
             std::format("Secure connect to {} regtype {} ({}:{}) : {}", info.instance, info.service,
                         info.v4_address_string(), info.port, response);
@@ -243,9 +236,7 @@ bool adb_secure_connect_by_service_name(const std::string& instance_name) {
         return false;
     }
 
-    std::optional<ServiceInfo> info;
-    auto cb = [&](const ServiceInfo& si) { info.emplace(si); };
-    ForEachService(g_state->watchers[kADBSecureConnectServiceRefIndex], instance_name, cb);
+    auto info = discovered_services.FindInstance(ADB_SERVICE_TLS, instance_name);
     if (info.has_value()) {
         return ConnectAdbSecureDevice(*info);
     }
@@ -270,96 +261,31 @@ std::string mdns_list_discovered_services() {
         result += std::format("{}\t{}\t{}:{}\n", si.instance, si.service, si.v4_address_string(),
                               si.port);
     };
-
-    for (const auto& receiver : g_state->watchers) {
-        ForEachService(receiver, "", cb);
-    }
+    discovered_services.ForAllServices(cb);
     return result;
 }
 
 std::optional<ServiceInfo> mdns_get_connect_service_info(const std::string& name) {
     CHECK(!name.empty());
 
-    if (!g_state || g_state->watchers.empty()) {
-        return std::nullopt;
-    }
-
     auto mdns_instance = mdns::mdns_parse_instance_name(name);
     if (!mdns_instance.has_value()) {
         D("Failed to parse mDNS name [%s]", name.data());
         return std::nullopt;
     }
 
-    std::optional<ServiceInfo> info;
-    auto cb = [&](const ServiceInfo& si) { info.emplace(si); };
-
-    std::string reg_type;
-    // Service name was provided.
-    if (!mdns_instance->service_name.empty()) {
-        reg_type = android::base::StringPrintf("%s.%s", mdns_instance->service_name.data(),
-                                               mdns_instance->transport_type.data());
-        const auto index = adb_DNSServiceIndexByName(reg_type);
-        if (!index) {
-            return std::nullopt;
-        }
-        switch (*index) {
-            case kADBTransportServiceRefIndex:
-            case kADBSecureConnectServiceRefIndex:
-                ForEachService(g_state->watchers[*index], mdns_instance->instance_name, cb);
-                break;
-            default:
-                D("Not a connectable service name [%s]", reg_type.data());
-                return std::nullopt;
-        }
-        return info;
-    }
-
-    // No mdns service name provided. Just search for the instance name in all adb connect services.
-    // Prefer the secured connect service over the other.
-    ForEachService(g_state->watchers[kADBSecureConnectServiceRefIndex], name, cb);
-    if (!info.has_value()) {
-        ForEachService(g_state->watchers[kADBTransportServiceRefIndex], name, cb);
-    }
-
-    return info;
+    return discovered_services.FindInstance(mdns_instance->instance_name,
+                                            mdns_instance->service_name);
 }
 
 std::optional<ServiceInfo> mdns_get_pairing_service_info(const std::string& name) {
     CHECK(!name.empty());
 
-    if (!g_state || g_state->watchers.empty()) {
-        return std::nullopt;
-    }
-
     auto mdns_instance = mdns::mdns_parse_instance_name(name);
     if (!mdns_instance.has_value()) {
         D("Failed to parse mDNS name [%s]", name.data());
-        return std::nullopt;
+        return {};
     }
 
-    std::optional<ServiceInfo> info;
-    auto cb = [&](const ServiceInfo& si) { info.emplace(si); };
-
-    std::string reg_type;
-    // Verify it's a pairing service if user explicitly inputs it.
-    if (!mdns_instance->service_name.empty()) {
-        reg_type = android::base::StringPrintf("%s.%s", mdns_instance->service_name.data(),
-                                               mdns_instance->transport_type.data());
-        const auto index = adb_DNSServiceIndexByName(reg_type);
-        if (!index) {
-            return std::nullopt;
-        }
-        switch (*index) {
-            case kADBSecurePairingServiceRefIndex:
-                break;
-            default:
-                D("Not an adb pairing reg_type [%s]", reg_type.data());
-                return std::nullopt;
-        }
-        return info;
-    }
-
-    ForEachService(g_state->watchers[kADBSecurePairingServiceRefIndex], name, cb);
-
-    return info;
+    return discovered_services.FindInstance(ADB_SERVICE_PAIR, mdns_instance->instance_name);
 }

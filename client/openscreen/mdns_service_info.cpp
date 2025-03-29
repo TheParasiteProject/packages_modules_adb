@@ -37,18 +37,6 @@ std::string ServiceInfo::v6_address_string() const {
 ErrorOr<ServiceInfo> DnsSdInstanceEndpointToServiceInfo(
         const discovery::DnsSdInstanceEndpoint& endpoint) {
     ServiceInfo service_info;
-    // Check if |endpoint| is a known adb service name
-    for (int i = 0; i < kNumADBDNSServices; ++i) {
-        if (endpoint.service_id() == kADBDNSServices[i]) {
-            service_info.service = endpoint.service_id();
-            service_info.instance = endpoint.instance_id();
-            break;
-        }
-        if (i == kNumADBDNSServices - 1) {
-            LOG(ERROR) << "Got unknown service name [" << endpoint.service_id() << "]";
-            return Error::Code::kParameterInvalid;
-        }
-    }
 
     service_info.port = endpoint.port();
     for (const IPAddress& address : endpoint.addresses()) {

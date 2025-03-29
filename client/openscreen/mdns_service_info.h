@@ -36,6 +36,13 @@ struct ServiceInfo {
     std::string v6_address_string() const;
 };  // ServiceInfo
 
+inline std::ostream& operator<<(std::ostream& os, const ServiceInfo& service_info) {
+    os << "Instance: " << service_info.instance << ", Service: " << service_info.service
+       << ", Port: " << service_info.port << ", IPv4: " << service_info.v4_address
+       << ", IPv6: " << service_info.v6_address;
+    return os;
+}
+
 openscreen::ErrorOr<ServiceInfo> DnsSdInstanceEndpointToServiceInfo(
         const openscreen::discovery::DnsSdInstanceEndpoint& endpoint);
 

@@ -26,10 +26,7 @@
 
 #include "adb_trace.h"
 
-#define ADB_FULL_MDNS_SERVICE_TYPE(atype) ("_" atype "._tcp")
-const char* kADBDNSServices[] = {ADB_FULL_MDNS_SERVICE_TYPE(ADB_MDNS_SERVICE_TYPE),
-                                 ADB_FULL_MDNS_SERVICE_TYPE(ADB_MDNS_TLS_PAIRING_TYPE),
-                                 ADB_FULL_MDNS_SERVICE_TYPE(ADB_MDNS_TLS_CONNECT_TYPE)};
+const char* kADBDNSServices[] = {ADB_SERVICE_TCP, ADB_SERVICE_PAIR, ADB_SERVICE_TLS};
 
 #if ADB_HOST
 namespace {
