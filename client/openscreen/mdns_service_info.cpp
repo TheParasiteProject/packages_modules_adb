@@ -40,8 +40,8 @@ ErrorOr<ServiceInfo> DnsSdInstanceEndpointToServiceInfo(
     // Check if |endpoint| is a known adb service name
     for (int i = 0; i < kNumADBDNSServices; ++i) {
         if (endpoint.service_id() == kADBDNSServices[i]) {
-            service_info.service_name = endpoint.service_id();
-            service_info.instance_name = endpoint.instance_id();
+            service_info.service = endpoint.service_id();
+            service_info.instance = endpoint.instance_id();
             break;
         }
         if (i == kNumADBDNSServices - 1) {

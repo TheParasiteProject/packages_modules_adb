@@ -60,16 +60,10 @@ using ServicesUpdatedState = ServiceWatcher::ServicesUpdatedState;
 
 struct DiscoveryState;
 DiscoveryState* g_state = nullptr;
-// TODO: remove once openscreen has bonjour client APIs.
-bool g_using_bonjour = false;
-AdbMdnsResponderFuncs g_adb_mdnsresponder_funcs;
 
 class DiscoveryReportingClient : public discovery::ReportingClient {
   public:
     void OnFatalError(Error error) override {
-        // The multicast port 5353 may fail to bind because of another process already binding
-        // to it (bonjour). So let's fallback to bonjour client APIs.
-        // TODO: Remove this once openscreen implements the bonjour client APIs.
         LOG(ERROR) << "Encountered fatal discovery error: " << error;
         got_fatal_ = true;
     }
@@ -98,36 +92,33 @@ void OnServiceReceiverResult(std::vector<std::reference_wrapper<const ServiceInf
                              std::reference_wrapper<const ServiceInfo> info,
                              ServicesUpdatedState state) {
     VLOG(MDNS) << "Endpoint state=" << static_cast<int>(state)
-               << " instance_name=" << info.get().instance_name
-               << " service_name=" << info.get().service_name << " addr=" << info.get().v4_address
-               << " addrv6=" << info.get().v6_address << " total_serv=" << infos.size();
+               << " instance_name=" << info.get().instance << " service_name=" << info.get().service
+               << " addr=" << info.get().v4_address << " addrv6=" << info.get().v6_address
+               << " total_serv=" << infos.size();
 
     switch (state) {
         case ServicesUpdatedState::EndpointCreated:
         case ServicesUpdatedState::EndpointUpdated:
-            if (adb_DNSServiceShouldAutoConnect(info.get().service_name,
-                                                info.get().instance_name) &&
+            if (adb_DNSServiceShouldAutoConnect(info.get().service, info.get().instance) &&
                 info.get().v4_address) {
-                auto index = adb_DNSServiceIndexByName(info.get().service_name);
+                auto index = adb_DNSServiceIndexByName(info.get().service);
                 if (!index) {
                     return;
                 }
 
                 // Don't try to auto-connect if not in the keystore.
                 if (*index == kADBSecureConnectServiceRefIndex &&
-                    !adb_wifi_is_known_host(info.get().instance_name)) {
-                    VLOG(MDNS) << "instance_name=" << info.get().instance_name
-                               << " not in keystore";
+                    !adb_wifi_is_known_host(info.get().instance)) {
+                    VLOG(MDNS) << "instance_name=" << info.get().instance << " not in keystore";
                     return;
                 }
                 std::string response;
-                VLOG(MDNS) << "Attempting to auto-connect to instance=" << info.get().instance_name
-                           << " service=" << info.get().service_name << " addr4=%s"
+                VLOG(MDNS) << "Attempting to auto-connect to instance=" << info.get().instance
+                           << " service=" << info.get().service << " addr4=%s"
                            << info.get().v4_address << ":" << info.get().port;
-                connect_device(
-                        android::base::StringPrintf("%s.%s", info.get().instance_name.c_str(),
-                                                    info.get().service_name.c_str()),
-                        &response);
+                connect_device(android::base::StringPrintf("%s.%s", info.get().instance.c_str(),
+                                                           info.get().service.c_str()),
+                               &response);
             }
             break;
         default:
@@ -192,14 +183,8 @@ void StartDiscovery() {
                         w->StopDiscovery();
                     }
                 }
-                g_using_bonjour = true;
                 break;
             }
-        }
-
-        if (g_using_bonjour) {
-            VLOG(MDNS) << "Fallback to MdnsResponder client for discovery";
-            g_adb_mdnsresponder_funcs = StartMdnsResponderDiscovery();
         }
     });
 }
@@ -211,7 +196,7 @@ void ForEachService(const std::unique_ptr<ServiceWatcher>& receiver,
     }
     auto services = receiver->GetServices();
     for (const auto& s : services) {
-        if (wanted_instance_name.empty() || s.get().instance_name == wanted_instance_name) {
+        if (wanted_instance_name.empty() || s.get().instance == wanted_instance_name) {
             std::stringstream ss;
             ss << s.get().v4_address;
             cb(s.get());
@@ -219,18 +204,20 @@ void ForEachService(const std::unique_ptr<ServiceWatcher>& receiver,
     }
 }
 
-bool ConnectAdbSecureDevice(const MdnsInfo& info) {
-    if (!adb_wifi_is_known_host(info.service_name)) {
-        VLOG(MDNS) << "serviceName=" << info.service_name << " not in keystore";
+bool ConnectAdbSecureDevice(const ServiceInfo& info) {
+    if (!adb_wifi_is_known_host(info.instance)) {
+        VLOG(MDNS) << "serviceName=" << info.instance << " not in keystore";
         return false;
     }
 
     std::string response;
-    connect_device(android::base::StringPrintf("%s.%s", info.service_name.c_str(),
-                                               info.service_type.c_str()),
-                   &response);
-    D("Secure connect to %s regtype %s (%s:%hu) : %s", info.service_name.c_str(),
-      info.service_type.c_str(), info.addr.c_str(), info.port, response.c_str());
+    connect_device(
+            android::base::StringPrintf("%s.%s", info.instance.c_str(), info.service.c_str()),
+            &response);
+    std::string debug_message =
+            std::format("Secure connect to {} regtype {} ({}:{}) : {}", info.instance, info.service,
+                        info.v4_address_string(), info.port, response);
+    VLOG(MDNS) << debug_message;
     return true;
 }
 
@@ -238,21 +225,12 @@ bool ConnectAdbSecureDevice(const MdnsInfo& info) {
 
 /////////////////////////////////////////////////////////////////////////////////
 
-bool using_bonjour(void) {
-    return g_using_bonjour;
-}
-
-void mdns_cleanup() {
-    if (g_using_bonjour) {
-        return g_adb_mdnsresponder_funcs.mdns_cleanup();
-    }
-}
+void mdns_cleanup() {}
 
 void init_mdns_transport_discovery() {
     const char* mdns_osp = getenv("ADB_MDNS_OPENSCREEN");
     if (mdns_osp && strcmp(mdns_osp, "0") == 0) {
-        g_using_bonjour = true;
-        g_adb_mdnsresponder_funcs = StartMdnsResponderDiscovery();
+        LOG(WARNING) << "Environment variable ADB_MDNS_OPENSCREEN disregarded";
     } else {
         VLOG(MDNS) << "Openscreen mdns discovery enabled";
         StartDiscovery();
@@ -260,19 +238,13 @@ void init_mdns_transport_discovery() {
 }
 
 bool adb_secure_connect_by_service_name(const std::string& instance_name) {
-    if (g_using_bonjour) {
-        return g_adb_mdnsresponder_funcs.adb_secure_connect_by_service_name(instance_name);
-    }
-
     if (!g_state || g_state->watchers.empty()) {
         VLOG(MDNS) << "Mdns not enabled";
         return false;
     }
 
-    std::optional<MdnsInfo> info;
-    auto cb = [&](const mdns::ServiceInfo& si) {
-        info.emplace(si.instance_name, si.service_name, si.v4_address_string(), si.port);
-    };
+    std::optional<ServiceInfo> info;
+    auto cb = [&](const ServiceInfo& si) { info.emplace(si); };
     ForEachService(g_state->watchers[kADBSecureConnectServiceRefIndex], instance_name, cb);
     if (info.has_value()) {
         return ConnectAdbSecureDevice(*info);
@@ -281,31 +253,22 @@ bool adb_secure_connect_by_service_name(const std::string& instance_name) {
 }
 
 std::string mdns_check() {
-    if (!g_state && !g_using_bonjour) {
+    if (!g_state) {
         return "ERROR: mdns discovery disabled";
-    }
-
-    if (g_using_bonjour) {
-        return g_adb_mdnsresponder_funcs.mdns_check();
     }
 
     return "mdns daemon version [Openscreen discovery 0.0.0]";
 }
 
 std::string mdns_list_discovered_services() {
-    if (g_using_bonjour) {
-        return g_adb_mdnsresponder_funcs.mdns_list_discovered_services();
-    }
-
     if (!g_state || g_state->watchers.empty()) {
         return "";
     }
 
     std::string result;
     auto cb = [&](const mdns::ServiceInfo& si) {
-        result += android::base::StringPrintf("%s\t%s\t%s:%u\n", si.instance_name.data(),
-                                              si.service_name.data(), si.v4_address_string().data(),
-                                              si.port);
+        result += std::format("{}\t{}\t{}:{}\n", si.instance, si.service, si.v4_address_string(),
+                              si.port);
     };
 
     for (const auto& receiver : g_state->watchers) {
@@ -314,12 +277,8 @@ std::string mdns_list_discovered_services() {
     return result;
 }
 
-std::optional<MdnsInfo> mdns_get_connect_service_info(const std::string& name) {
+std::optional<ServiceInfo> mdns_get_connect_service_info(const std::string& name) {
     CHECK(!name.empty());
-
-    if (g_using_bonjour) {
-        return g_adb_mdnsresponder_funcs.mdns_get_connect_service_info(name);
-    }
 
     if (!g_state || g_state->watchers.empty()) {
         return std::nullopt;
@@ -331,10 +290,8 @@ std::optional<MdnsInfo> mdns_get_connect_service_info(const std::string& name) {
         return std::nullopt;
     }
 
-    std::optional<MdnsInfo> info;
-    auto cb = [&](const ServiceInfo& si) {
-        info.emplace(si.instance_name, si.service_name, si.v4_address_string(), si.port);
-    };
+    std::optional<ServiceInfo> info;
+    auto cb = [&](const ServiceInfo& si) { info.emplace(si); };
 
     std::string reg_type;
     // Service name was provided.
@@ -367,12 +324,8 @@ std::optional<MdnsInfo> mdns_get_connect_service_info(const std::string& name) {
     return info;
 }
 
-std::optional<MdnsInfo> mdns_get_pairing_service_info(const std::string& name) {
+std::optional<ServiceInfo> mdns_get_pairing_service_info(const std::string& name) {
     CHECK(!name.empty());
-
-    if (g_using_bonjour) {
-        return g_adb_mdnsresponder_funcs.mdns_get_pairing_service_info(name);
-    }
 
     if (!g_state || g_state->watchers.empty()) {
         return std::nullopt;
@@ -384,10 +337,8 @@ std::optional<MdnsInfo> mdns_get_pairing_service_info(const std::string& name) {
         return std::nullopt;
     }
 
-    std::optional<MdnsInfo> info;
-    auto cb = [&](const ServiceInfo& si) {
-        info.emplace(si.instance_name, si.service_name, si.v4_address_string(), si.port);
-    };
+    std::optional<ServiceInfo> info;
+    auto cb = [&](const ServiceInfo& si) { info.emplace(si); };
 
     std::string reg_type;
     // Verify it's a pairing service if user explicitly inputs it.

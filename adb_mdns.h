@@ -68,31 +68,6 @@ void mdns_cleanup();
 std::string mdns_check();
 std::string mdns_list_discovered_services();
 
-struct MdnsInfo {
-    std::string service_name;
-    std::string service_type;
-    std::string addr;
-    uint16_t port = 0;
-
-    MdnsInfo(std::string_view name, std::string_view type, std::string_view addr, uint16_t port)
-        : service_name(name), service_type(type), addr(addr), port(port) {}
-};
-
-std::optional<MdnsInfo> mdns_get_connect_service_info(const std::string& name);
-std::optional<MdnsInfo> mdns_get_pairing_service_info(const std::string& name);
-
-// TODO: Remove once openscreen has support for bonjour client APIs.
-struct AdbMdnsResponderFuncs {
-    std::string (*_Nonnull mdns_check)();
-    std::string (*_Nonnull mdns_list_discovered_services)();
-    std::optional<MdnsInfo> (*_Nonnull mdns_get_connect_service_info)(const std::string&);
-    std::optional<MdnsInfo> (*_Nonnull mdns_get_pairing_service_info)(const std::string&);
-    void (*_Nonnull mdns_cleanup)();
-    bool (*_Nonnull adb_secure_connect_by_service_name)(const std::string&);
-};  // AdbBonjourCallbacks
-
-// TODO: Remove once openscreen has support for bonjour client APIs.
-// Start mdns discovery using MdnsResponder backend. Fills in AdbMdnsResponderFuncs for adb mdns
-// related functions.
-AdbMdnsResponderFuncs StartMdnsResponderDiscovery();
+std::optional<mdns::ServiceInfo> mdns_get_connect_service_info(const std::string& name);
+std::optional<mdns::ServiceInfo> mdns_get_pairing_service_info(const std::string& name);
 #endif  // ADB_HOST

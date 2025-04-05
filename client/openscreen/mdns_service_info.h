@@ -26,8 +26,8 @@
 namespace mdns {
 
 struct ServiceInfo {
-    std::string instance_name;
-    std::string service_name;
+    std::string instance;
+    std::string service;
     openscreen::IPAddress v4_address;
     openscreen::IPAddress v6_address;
     uint16_t port;
