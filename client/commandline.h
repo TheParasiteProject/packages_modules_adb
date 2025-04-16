@@ -18,7 +18,9 @@
 #define COMMANDLINE_H
 
 #include <android-base/strings.h>
+#include <google/protobuf/text_format.h>
 
+#include <stdlib.h>
 #include <optional>
 
 #include "adb.h"
@@ -80,12 +82,19 @@ class DefaultStandardStreamsCallback : public StandardStreamsCallbackInterface {
         : stdout_str_(stdout_str), stderr_str_(stderr_str), returnErrors_(returnErrors) {
     }
 
+    // Called when receiving from the device standard input stream
     bool OnStdout(const char* buffer, size_t length) {
         return OnStream(stdout_str_, stdout, buffer, length, returnErrors_);
     }
 
+    // Called when receiving from the device error input stream
     bool OnStderr(const char* buffer, size_t length) {
         return OnStream(stderr_str_, stderr, buffer, length, returnErrors_);
+    }
+
+    // Send to local standard input stream (or stdout_str if one was provided).
+    bool OnStreamOut(const char* buffer, size_t length) {
+        return OnStream(stdout_str_, stdout, buffer, length, returnErrors_);
     }
 
     int Done(int status) {
@@ -114,6 +123,62 @@ class SilentStandardStreamsCallbackInterface : public StandardStreamsCallbackInt
 
 // Singleton.
 extern DefaultStandardStreamsCallback DEFAULT_STANDARD_STREAMS_CALLBACK;
+
+// Prints out human-readable form of the protobuf message received in binary format.
+// Expected input is a stream of (<hex4>, [binary protobuf]).
+template <typename T>
+class ProtoBinaryToText : public DefaultStandardStreamsCallback {
+  public:
+    explicit ProtoBinaryToText(const std::string& m, std::string* std_out = nullptr,
+                               std::string* std_err = nullptr)
+        : DefaultStandardStreamsCallback(std_out, std_err), message(m) {}
+    bool OnStdout(const char* b, const size_t l) override {
+        constexpr size_t kHeader_size = 4;
+
+        // Add the incoming bytes to our internal buffer.
+        std::copy_n(b, l, std::back_inserter(buffer_));
+
+        // Do we have at least the header?
+        if (buffer_.size() < kHeader_size) {
+            return true;
+        }
+
+        // We have a header. Convert <hex4> to size_t and check if we have received all
+        // the payload.
+        const std::string expected_size_hex = std::string(buffer_.data(), kHeader_size);
+        const size_t expected_size = strtoull(expected_size_hex.c_str(), nullptr, 16);
+
+        // Do we have the header + all expected payload?
+        if (buffer_.size() < expected_size + kHeader_size) {
+            return true;
+        }
+
+        // Convert binary to text proto.
+        T binary_proto;
+        binary_proto.ParseFromString(std::string(buffer_.data() + kHeader_size, expected_size));
+        std::string string_proto;
+        google::protobuf::TextFormat::PrintToString(binary_proto, &string_proto);
+
+        // Drop bytes that we just consumed.
+        buffer_.erase(buffer_.begin(), buffer_.begin() + kHeader_size + expected_size);
+
+        OnStreamOut(message.data(), message.length());
+        OnStreamOut(string_proto.data(), string_proto.length());
+
+        // Recurse if there is still data in our buffer (there may be more messages).
+        if (!buffer_.empty()) {
+            OnStdout("", 0);
+        }
+
+        return true;
+    }
+
+  private:
+    DISALLOW_COPY_AND_ASSIGN(ProtoBinaryToText);
+    // We buffer bytes here until we get all the header and payload bytes
+    std::vector<char> buffer_;
+    std::string message;
+};
 
 int adb_commandline(int argc, const char** argv);
 

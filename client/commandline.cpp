@@ -51,8 +51,6 @@
 #include <termios.h>
 #endif
 
-#include <google/protobuf/text_format.h>
-
 #include "adb.h"
 #include "adb_auth.h"
 #include "adb_client.h"
@@ -1405,35 +1403,6 @@ class AdbServerStateStreamsCallback : public DefaultStandardStreamsCallback {
     DISALLOW_COPY_AND_ASSIGN(AdbServerStateStreamsCallback);
 };
 
-// A class that prints out human readable form of the protobuf message for "track-app" service
-// (received in binary format).
-class TrackAppStreamsCallback : public DefaultStandardStreamsCallback {
-  public:
-    TrackAppStreamsCallback() : DefaultStandardStreamsCallback(nullptr, nullptr) {}
-
-    // Assume the buffer contains at least 4 bytes of valid data.
-    bool OnStdout(const char* buffer, size_t length) override {
-        if (length < 4) return true;  // Unexpected length received. Do nothing.
-
-        adb::proto::AppProcesses binary_proto;
-        // The first 4 bytes are the length of remaining content in hexadecimal format.
-        binary_proto.ParseFromString(std::string(buffer + 4, length - 4));
-        char summary[24];  // The following string includes digits and 16 fixed characters.
-        int written = snprintf(summary, sizeof(summary), "Process count: %d\n",
-                               binary_proto.process_size());
-        if (!OnStream(nullptr, stdout, summary, written, false)) {
-          return false;
-        }
-
-        std::string string_proto;
-        google::protobuf::TextFormat::PrintToString(binary_proto, &string_proto);
-        return OnStream(nullptr, stdout, string_proto.data(), string_proto.length(), false);
-    }
-
-  private:
-    DISALLOW_COPY_AND_ASSIGN(TrackAppStreamsCallback);
-};
-
 static int adb_connect_command_bidirectional(const std::string& command) {
     std::string error;
     unique_fd fd(adb_connect(command, &error));
@@ -2127,7 +2096,7 @@ int adb_commandline(int argc, const char** argv) {
         if (!CanUseFeature(*features, kFeatureTrackApp)) {
             error_exit("track-app is not supported by the device");
         }
-        TrackAppStreamsCallback callback;
+        ProtoBinaryToText<adb::proto::AppProcesses> callback("\nProcesses:\n");
         if (argc == 1) {
             return adb_connect_command("track-app", nullptr, &callback);
         } else if (argc == 2) {
