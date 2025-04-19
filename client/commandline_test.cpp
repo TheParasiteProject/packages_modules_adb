@@ -47,7 +47,7 @@ TEST(commandline, parse_full_proto) {
     std::string err;
     std::string message = "Testing123";
     auto converter = ProtoBinaryToText<adb::proto::AppProcesses>(message, &out, &err);
-    converter.OnStdout(hex4_proto.data(), hex4_proto.size());
+    converter.OnStdoutReceived(hex4_proto.data(), hex4_proto.size());
 
     ASSERT_FALSE(out.empty());
     ASSERT_TRUE(out.contains(message));
@@ -70,7 +70,7 @@ TEST(commandline, parse_full_proto_chopped_in_1_bytes) {
     std::string message = "Testing123";
     auto converter = ProtoBinaryToText<adb::proto::AppProcesses>(message, &out, &err);
     for (auto i = 0u; i < hex4_proto.size(); i++) {
-        converter.OnStdout(hex4_proto.data() + i, 1);
+        converter.OnStdoutReceived(hex4_proto.data() + i, 1);
     }
 
     ASSERT_FALSE(out.empty());
@@ -92,7 +92,7 @@ TEST(commandline, parse_half_proto) {
     std::string err;
     std::string message = "Testing 123";
     auto converter = ProtoBinaryToText<adb::proto::AppProcesses>(message, &out, &err);
-    converter.OnStdout(hex4_proto.data(), hex4_proto.size() / 2);
+    converter.OnStdoutReceived(hex4_proto.data(), hex4_proto.size() / 2);
     ASSERT_TRUE(out.empty());
 }
 
@@ -122,7 +122,7 @@ TEST(commandline, parse_two_proto) {
     std::string err;
     std::string message = "Testing123";
     auto converter = ProtoBinaryToText<adb::proto::AppProcesses>(message, &out, &err);
-    converter.OnStdout(two_messages.data(), two_messages.size());
+    converter.OnStdoutReceived(two_messages.data(), two_messages.size());
 
     ASSERT_FALSE(out.empty());
     ASSERT_EQ(2u, count_occurrences(out, message));
@@ -156,7 +156,7 @@ TEST(commandline, parse_one_and_a_half_proto) {
     std::string err;
     std::string message = "Testing123";
     auto converter = ProtoBinaryToText<adb::proto::AppProcesses>(message, &out, &err);
-    converter.OnStdout(two_messages.data(), two_messages.size());
+    converter.OnStdoutReceived(two_messages.data(), two_messages.size());
 
     ASSERT_FALSE(out.empty());
     ASSERT_EQ(1u, count_occurrences(out, message));
@@ -166,7 +166,7 @@ TEST(commandline, parse_one_and_a_half_proto) {
     // Send the remainder of second proto
     out.clear();
     std::string remaining = hex4_proto2.substr(hex4_proto2.size() / 2, hex4_proto2.size());
-    converter.OnStdout(remaining.data(), remaining.size());
+    converter.OnStdoutReceived(remaining.data(), remaining.size());
     ASSERT_FALSE(out.empty());
     ASSERT_EQ(1u, count_occurrences(out, message));
     ASSERT_EQ(0u, count_occurrences(out, process_name1));

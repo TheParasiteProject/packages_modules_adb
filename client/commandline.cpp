@@ -302,15 +302,15 @@ int read_and_dump_protocol(borrowed_fd fd, StandardStreamsCallbackInterface* cal
     }
     while (protocol->Read()) {
       if (protocol->id() == ShellProtocol::kIdStdout) {
-        if (!callback->OnStdout(protocol->data(), protocol->data_length())) {
-          exit_code = SIGPIPE + 128;
-          break;
-        }
+          if (!callback->OnStdoutReceived(protocol->data(), protocol->data_length())) {
+              exit_code = SIGPIPE + 128;
+              break;
+          }
       } else if (protocol->id() == ShellProtocol::kIdStderr) {
-        if (!callback->OnStderr(protocol->data(), protocol->data_length())) {
-          exit_code = SIGPIPE + 128;
-          break;
-        }
+          if (!callback->OnStderrReceived(protocol->data(), protocol->data_length())) {
+              exit_code = SIGPIPE + 128;
+              break;
+          }
       } else if (protocol->id() == ShellProtocol::kIdExit) {
         // data() returns a char* which doesn't have defined signedness.
         // Cast to uint8_t to prevent 255 from being sign extended to INT_MIN,
@@ -338,8 +338,8 @@ int read_and_dump(borrowed_fd fd, bool use_shell_protocol,
         if (length <= 0) {
           break;
         }
-        if (!callback->OnStdout(buffer_ptr, length)) {
-          break;
+        if (!callback->OnStdoutReceived(buffer_ptr, length)) {
+            break;
         }
       }
     }
@@ -1377,13 +1377,13 @@ class AdbServerStateStreamsCallback : public DefaultStandardStreamsCallback {
   public:
     AdbServerStateStreamsCallback() : DefaultStandardStreamsCallback(nullptr, nullptr) {}
 
-    bool OnStdout(const char* buffer, size_t length) override {
-        return OnStream(&output_, nullptr, buffer, length, false);
+    bool OnStdoutReceived(const char* buffer, size_t length) override {
+        return SendTo(&output_, nullptr, buffer, length, false);
     }
 
     int Done(int status) {
         if (output_.size() < 4) {
-            return OnStream(nullptr, stdout, output_.data(), output_.length(), false);
+            return SendTo(nullptr, stdout, output_.data(), output_.length(), false);
         }
 
         // Skip the 4-hex prefix
@@ -1395,7 +1395,7 @@ class AdbServerStateStreamsCallback : public DefaultStandardStreamsCallback {
         std::string string_proto;
         google::protobuf::TextFormat::PrintToString(binary_proto, &string_proto);
 
-        return OnStream(nullptr, stdout, string_proto.data(), string_proto.length(), false);
+        return SendTo(nullptr, stdout, string_proto.data(), string_proto.length(), false);
     }
 
   private:
