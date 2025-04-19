@@ -216,8 +216,7 @@ bool socket_spec_connect(unique_fd* fd, std::string_view address, int* port, std
                     // reconnects.
                     port_value = mdns_info->port;
                     if (serial) {
-                        *serial = android::base::StringPrintf("%s.%s", mdns_info->instance.c_str(),
-                                                              mdns_info->service.c_str());
+                        *serial = std::format("{}.{}", mdns_info->instance, mdns_info->service);
                     }
                 }
             } else {

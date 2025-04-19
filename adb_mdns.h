@@ -29,6 +29,11 @@
 #define ADB_MDNS_SERVICE_TYPE "adb"
 #define ADB_MDNS_TLS_PAIRING_TYPE "adb-tls-pairing"
 #define ADB_MDNS_TLS_CONNECT_TYPE "adb-tls-connect"
+#define ADB_FULL_MDNS_SERVICE_TYPE(atype) ("_" atype "._tcp")
+
+#define ADB_SERVICE_TCP ADB_FULL_MDNS_SERVICE_TYPE(ADB_MDNS_SERVICE_TYPE)
+#define ADB_SERVICE_TLS ADB_FULL_MDNS_SERVICE_TYPE(ADB_MDNS_TLS_CONNECT_TYPE)
+#define ADB_SERVICE_PAIR ADB_FULL_MDNS_SERVICE_TYPE(ADB_MDNS_TLS_PAIRING_TYPE)
 
 // Client/service versions are initially defined to be matching,
 // but may go out of sync as different clients and services
@@ -40,9 +45,6 @@ constexpr int kADBTransportServiceRefIndex = 0;
 constexpr int kADBSecurePairingServiceRefIndex = 1;
 constexpr int kADBSecureConnectServiceRefIndex = 2;
 constexpr int kNumADBDNSServices = 3;
-
-extern const char* _Nonnull kADBSecurePairingServiceTxtRecord;
-extern const char* _Nonnull kADBSecureConnectServiceTxtRecord;
 
 extern const char* _Nonnull kADBDNSServices[kNumADBDNSServices];
 extern const char* _Nonnull kADBDNSServiceTxtRecords[kNumADBDNSServices];
