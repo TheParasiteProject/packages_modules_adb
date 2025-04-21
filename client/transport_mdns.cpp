@@ -146,7 +146,7 @@ std::optional<discovery::Config> GetConfigForAllInterfaces() {
     // to answer over no domain.
     config.enable_publication = false;
 
-    for (const auto interface : interface_infos) {
+    for (const auto& interface : interface_infos) {
         if (interface.GetIpAddressV4() || interface.GetIpAddressV6()) {
             config.network_info.push_back({interface});
             VLOG(MDNS) << "Listening on interface [" << interface << "]";
