@@ -785,6 +785,7 @@ cc_defaults {
     apex_available: ["com.android.adbd"],
 
     srcs: [
+        "daemon/listen_addrs.cpp",
         "daemon/main.cpp",
     ],
 
@@ -809,8 +810,35 @@ cc_defaults {
     ],
 
     shared_libs: [
+        "adbd_flags_c_lib",
         "libadbd_auth",
     ],
+}
+
+aconfig_declarations {
+    name: "adbd_flags",
+    package: "com.android.modules.adb.flags",
+    container: "system",
+    srcs: [
+        "adbd.aconfig",
+    ],
+}
+
+cc_aconfig_library {
+    name: "adbd_flags_c_lib",
+    aconfig_declarations: "adbd_flags",
+    host_supported: true,
+    min_sdk_version: "30",
+    apex_available: ["com.android.adbd"],
+}
+
+cc_aconfig_library {
+    name: "adbd_flags_c_lib_for_test",
+    aconfig_declarations: "adbd_flags",
+    host_supported: true,
+    min_sdk_version: "30",
+    apex_available: ["com.android.adbd"],
+    mode: "test",
 }
 
 cc_binary {
@@ -962,6 +990,31 @@ cc_test {
         "mts-adbd",
     ],
     require_root: true,
+}
+
+cc_test_host {
+    name: "adbd_unit_test",
+    defaults: [
+        "adb_defaults",
+        "host_adbd_supported",
+    ],
+
+    srcs: [
+        "daemon/listen_addrs.cpp",
+        "daemon/listen_addrs_test.cpp",
+    ],
+
+    shared_libs: [
+        "adbd_flags_c_lib_for_test",
+        "libadbd",
+        "libadbd_services",
+        "libbase",
+        "libssl",
+    ],
+
+    static_libs: [
+        "libgmock",
+    ],
 }
 
 python_test_host {
