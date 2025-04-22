@@ -274,8 +274,9 @@ std::optional<ServiceInfo> mdns_get_connect_service_info(const std::string& name
         return std::nullopt;
     }
 
-    return discovered_services.FindInstance(mdns_instance->instance_name,
-                                            mdns_instance->service_name);
+    std::string fq_service =
+            std::format("{}.{}", mdns_instance->service_name, mdns_instance->transport_type);
+    return discovered_services.FindInstance(fq_service, mdns_instance->instance_name);
 }
 
 std::optional<ServiceInfo> mdns_get_pairing_service_info(const std::string& name) {
