@@ -55,6 +55,7 @@
 #include "transport.h"
 
 #include "daemon/jdwp_service.h"
+#include "daemon/listen_addrs.h"
 #include "daemon/mdns.h"
 #include "daemon/transport_daemon.h"
 #include "daemon/watchdog.h"
@@ -266,40 +267,9 @@ int adbd_main() {
     }
 #endif
 
-    // If one of these properties is set, also listen on that port.
-    // If one of the properties isn't set and we couldn't listen on usb, listen
-    // on the default port.
-    std::vector<std::string> addrs;
-    std::string prop_addr = android::base::GetProperty("service.adb.listen_addrs", "");
-    if (prop_addr.empty()) {
-        std::string prop_port = android::base::GetProperty("service.adb.tcp.port", "");
-        if (prop_port.empty()) {
-            prop_port = android::base::GetProperty("persist.adb.tcp.port", "");
-        }
+    std::vector<std::string> addrs = get_listen_addrs(!is_usb);
 
-#if !defined(__ANDROID__)
-        if (prop_port.empty() && getenv("ADBD_PORT")) {
-            prop_port = getenv("ADBD_PORT");
-        }
-#endif
-
-        int port;
-        if (sscanf(prop_port.c_str(), "%d", &port) == 1 && port > 0) {
-            D("using tcp port=%d", port);
-            // Listen on TCP and VSOCK port specified by service.adb.tcp.port property.
-            addrs.push_back(android::base::StringPrintf("tcp:%d", port));
-            addrs.push_back(android::base::StringPrintf("vsock:%d", port));
-            setup_adb(addrs);
-        } else if (!is_usb) {
-            // Listen on default port.
-            addrs.push_back(
-                    android::base::StringPrintf("tcp:%d", DEFAULT_ADB_LOCAL_TRANSPORT_PORT));
-            addrs.push_back(
-                    android::base::StringPrintf("vsock:%d", DEFAULT_ADB_LOCAL_TRANSPORT_PORT));
-            setup_adb(addrs);
-        }
-    } else {
-        addrs = android::base::Split(prop_addr, ",");
+    if (!addrs.empty()) {
         setup_adb(addrs);
     }
 
