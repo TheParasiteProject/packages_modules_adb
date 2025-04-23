@@ -42,6 +42,7 @@
 #include "adb_io.h"
 #include "adb_unique_fd.h"
 #include "adb_utils.h"
+#include "fdevent/fdevent.h"
 #include "socket_spec.h"
 #include "sysdeps/chrono.h"
 
@@ -73,11 +74,13 @@ static std::unordered_map<int, atransport*> emulator_transports
         [[clang::no_destroy]] GUARDED_BY(emulator_transports_lock);
 
 bool connect_emulator(int port) {
+    fdevent_check_not_looper();
     std::string dummy;
     return connect_emulator_arbitrary_ports(port - 1, port, &dummy) == 0;
 }
 
 void connect_device(const std::string& address, std::string* response) {
+    fdevent_check_not_looper();
     if (address.empty()) {
         *response = "empty address";
         return;

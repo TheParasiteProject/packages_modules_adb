@@ -1507,6 +1507,12 @@ bool validate_transport_list(const std::list<atransport*>& list, const std::stri
 
 bool register_socket_transport(unique_fd s, std::string serial, int port, bool is_emulator,
                                atransport::ReconnectCallback reconnect, bool use_tls, int* error) {
+#if ADB_HOST
+    // Below in this method, we block up to 10s on the waitable. This should never run on the
+    // fdevent thread.
+    fdevent_check_not_looper();
+#endif
+
     atransport* t = new atransport(kTransportLocal, std::move(reconnect), kCsOffline);
     t->use_tls = use_tls;
     t->serial = std::move(serial);

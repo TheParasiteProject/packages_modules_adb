@@ -113,6 +113,10 @@ struct fdevent_context {
     // thread that invoked Loop().
     void CheckLooperThread() const;
 
+    // Assert that the caller is NOT executing in the context of the execution
+    // thread that invoked Loop().
+    void CheckNotLooperThread() const;
+
     // Queue an operation to be run on the looper thread.
     void Run(std::function<void()> fn);
 
@@ -154,6 +158,7 @@ void fdevent_loop();
 // of Loop() so that fdevent_context requests can be serially processed
 // by the global instance robustly.
 void fdevent_check_looper();
+void fdevent_check_not_looper();
 
 // Queue an operation to run on the looper event thread.
 void fdevent_run_on_looper(std::function<void()> fn);
