@@ -304,7 +304,9 @@ static int install_app_incremental(int argc, const char** argv, bool wait, bool 
     incremental::Args passthrough_args = {};
     for (int i = 0; i < argc; ++i) {
         const auto arg = std::string_view(argv[i]);
-        if (android::base::EndsWithIgnoreCase(arg, ".apk"sv)) {
+        if (android::base::EndsWithIgnoreCase(arg, ".apk"sv) ||
+            android::base::EndsWithIgnoreCase(arg, kDmExtension) ||
+            android::base::EndsWithIgnoreCase(arg, kSdmExtension)) {
             last_apk = i;
             if (first_apk == -1) {
                 first_apk = i;
@@ -538,10 +540,8 @@ static int install_multiple_app_streamed(int argc, const char** argv) {
         }
 
         if (android::base::EndsWithIgnoreCase(file, ".apk") ||
-            android::base::EndsWithIgnoreCase(
-                    file, ".dm") ||  // dex metadata, for cloud profile and cloud verification
-            android::base::EndsWithIgnoreCase(
-                    file, ".sdm") ||  // secure dex metadata, for cloud compilation
+            android::base::EndsWithIgnoreCase(file, kDmExtension) ||
+            android::base::EndsWithIgnoreCase(file, kSdmExtension) ||
             android::base::EndsWithIgnoreCase(file, ".fsv_sig") ||
             android::base::EndsWithIgnoreCase(file, ".idsig")) {  // v4 external signature
             struct stat sb;
