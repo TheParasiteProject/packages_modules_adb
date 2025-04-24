@@ -202,12 +202,12 @@ static bool load_keys(const std::string& path, bool allow_dir = true) {
     return false;
 }
 
-static std::string get_user_key_path() {
+std::string adb_auth_get_userkey_path() {
     return adb_get_android_dir_path() + OS_PATH_SEPARATOR + "adbkey";
 }
 
 static bool load_userkey() {
-    std::string path = get_user_key_path();
+    std::string path = adb_auth_get_userkey_path();
     if (path.empty()) {
         PLOG(ERROR) << "Error getting user key filename";
         return false;
@@ -285,7 +285,7 @@ static bool pubkey_from_privkey(std::string* out, const std::string& path) {
 }
 
 bssl::UniquePtr<EVP_PKEY> adb_auth_get_user_privkey() {
-    std::string path = get_user_key_path();
+    std::string path = adb_auth_get_userkey_path();
     if (path.empty()) {
         PLOG(ERROR) << "Error getting user key filename";
         return nullptr;
@@ -307,7 +307,7 @@ bssl::UniquePtr<EVP_PKEY> adb_auth_get_user_privkey() {
 }
 
 std::string adb_auth_get_userkey() {
-    std::string path = get_user_key_path();
+    std::string path = adb_auth_get_userkey_path();
     if (path.empty()) {
         PLOG(ERROR) << "Error getting user key filename";
         return "";
