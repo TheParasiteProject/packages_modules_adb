@@ -1722,7 +1722,7 @@ std::shared_ptr<RSA> atransport::Key() {
 
 std::shared_ptr<RSA> atransport::NextKey() {
     if (keys_.empty()) {
-        LOG(INFO) << "fetching keys for transport " << this->serial_name();
+        VLOG(ADB) << "fetching keys for transport " << this->serial_name();
         keys_ = adb_auth_get_private_keys();
 
         // We should have gotten at least one key: the one that's automatically generated.

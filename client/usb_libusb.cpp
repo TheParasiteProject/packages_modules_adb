@@ -93,7 +93,7 @@ bool LibUsbConnection::Start() {
 
 void LibUsbConnection::StartReadThread() {
     read_thread_ = std::thread([this]() {
-        LOG(INFO) << Serial() << ": read thread spawning";
+        VLOG(USB) << Serial() << ": read thread spawning";
         while (true) {
             auto packet = std::make_unique<apacket>();
             if (!device_->Read(packet.get())) {
@@ -108,7 +108,7 @@ void LibUsbConnection::StartReadThread() {
 
 void LibUsbConnection::StartWriteThread() {
     write_thread_ = std::thread([this]() {
-        LOG(INFO) << Serial() << ": write thread spawning";
+        VLOG(USB) << Serial() << ": write thread spawning";
         while (true) {
             std::unique_lock<std::mutex> lock(mutex_);
             ScopedLockAssertion assume_locked(mutex_);
