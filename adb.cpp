@@ -432,12 +432,11 @@ static void handle_new_connection(atransport* t, apacket* p) {
 #endif
 }
 
-void handle_packet(apacket *p, atransport *t)
-{
-    D("handle_packet() %c%c%c%c", ((char*) (&(p->msg.command)))[0],
-            ((char*) (&(p->msg.command)))[1],
-            ((char*) (&(p->msg.command)))[2],
-            ((char*) (&(p->msg.command)))[3]);
+void handle_packet(apacket* p, atransport* t) {
+    VLOG(PACKETS) << std::format("packet <-- {}{}{}{}", ((char*)(&(p->msg.command)))[0],
+                                 ((char*)(&(p->msg.command)))[1], ((char*)(&(p->msg.command)))[2],
+                                 ((char*)(&(p->msg.command)))[3]);
+
     print_packet("recv", p);
     CHECK_EQ(p->payload.size(), p->msg.data_length);
 
