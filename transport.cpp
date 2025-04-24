@@ -562,6 +562,10 @@ void FdConnection::Close() {
 }
 
 void send_packet(apacket* p, atransport* t) {
+    VLOG(PACKETS) << std::format("packet --> {}{}{}{}", ((char*)(&(p->msg.command)))[0],
+                                 ((char*)(&(p->msg.command)))[1], ((char*)(&(p->msg.command)))[2],
+                                 ((char*)(&(p->msg.command)))[3]);
+
     p->msg.magic = p->msg.command ^ 0xffffffff;
     // compute a checksum for connection/auth packets for compatibility reasons
     if (t->get_protocol_version() >= A_VERSION_SKIP_CHECKSUM) {
