@@ -233,6 +233,10 @@ static std::set<std::string> get_vendor_keys() {
 
     std::set<std::string> result;
     for (const auto& path : android::base::Split(adb_keys_path, ENV_PATH_SEPARATOR_STR)) {
+        // Malformed env variable (e.g.: ':<PATH>') can result in split returning empty string.
+        if (path.empty()) {
+            continue;
+        }
         result.emplace(path);
     }
     return result;
