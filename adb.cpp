@@ -432,12 +432,11 @@ static void handle_new_connection(atransport* t, apacket* p) {
 #endif
 }
 
-void handle_packet(apacket *p, atransport *t)
-{
-    D("handle_packet() %c%c%c%c", ((char*) (&(p->msg.command)))[0],
-            ((char*) (&(p->msg.command)))[1],
-            ((char*) (&(p->msg.command)))[2],
-            ((char*) (&(p->msg.command)))[3]);
+void handle_packet(apacket* p, atransport* t) {
+    VLOG(PACKETS) << std::format("packet <-- {}{}{}{}", ((char*)(&(p->msg.command)))[0],
+                                 ((char*)(&(p->msg.command)))[1], ((char*)(&(p->msg.command)))[2],
+                                 ((char*)(&(p->msg.command)))[3]);
+
     print_packet("recv", p);
     CHECK_EQ(p->payload.size(), p->msg.data_length);
 
@@ -1371,6 +1370,8 @@ HostRequestResult handle_host_request(std::string_view service, TransportType ty
         status.set_burst_mode(burst_mode_enabled());
         status.set_trace_level(get_trace_setting());
         status.set_mdns_enabled(mdns::is_enabled());
+        status.set_keystore_path(adb_auth_get_userkey_path());
+        status.set_known_hosts_path(get_user_known_hosts_path());
 
         std::string server_status_string;
         status.SerializeToString(&server_status_string);

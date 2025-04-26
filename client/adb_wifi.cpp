@@ -94,7 +94,7 @@ bool SafeReplaceFile(std::string_view old_file, std::string_view new_file) {
     return true;
 }
 
-static std::string get_user_known_hosts_path() {
+std::string get_user_known_hosts_path() {
     return adb_get_android_dir_path() + OS_PATH_SEPARATOR + "adb_known_hosts.pb";
 }
 

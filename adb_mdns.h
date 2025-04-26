@@ -72,4 +72,7 @@ std::string mdns_list_discovered_services();
 
 std::optional<mdns::ServiceInfo> mdns_get_connect_service_info(const std::string& name);
 std::optional<mdns::ServiceInfo> mdns_get_pairing_service_info(const std::string& name);
+
+// Return the location where adb host stores paired devices
+std::string get_user_known_hosts_path();
 #endif  // ADB_HOST

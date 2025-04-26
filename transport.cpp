@@ -562,6 +562,10 @@ void FdConnection::Close() {
 }
 
 void send_packet(apacket* p, atransport* t) {
+    VLOG(PACKETS) << std::format("packet --> {}{}{}{}", ((char*)(&(p->msg.command)))[0],
+                                 ((char*)(&(p->msg.command)))[1], ((char*)(&(p->msg.command)))[2],
+                                 ((char*)(&(p->msg.command)))[3]);
+
     p->msg.magic = p->msg.command ^ 0xffffffff;
     // compute a checksum for connection/auth packets for compatibility reasons
     if (t->get_protocol_version() >= A_VERSION_SKIP_CHECKSUM) {
@@ -740,6 +744,7 @@ static void fdevent_unregister_transport(atransport* t) {
         pending_list.remove(t);
     }
 
+    t->connection()->SetTransport(nullptr);
     delete t;
 
     update_transports();
@@ -1717,7 +1722,7 @@ std::shared_ptr<RSA> atransport::Key() {
 
 std::shared_ptr<RSA> atransport::NextKey() {
     if (keys_.empty()) {
-        LOG(INFO) << "fetching keys for transport " << this->serial_name();
+        VLOG(ADB) << "fetching keys for transport " << this->serial_name();
         keys_ = adb_auth_get_private_keys();
 
         // We should have gotten at least one key: the one that's automatically generated.

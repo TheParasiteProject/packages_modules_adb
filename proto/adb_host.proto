@@ -88,5 +88,7 @@ message AdbServerStatus {
      optional string trace_level = 10;
      optional bool burst_mode = 11;
      optional bool mdns_enabled = 12;
+     optional string keystore_path = 13;
+     optional string known_hosts_path = 14;
 }
 

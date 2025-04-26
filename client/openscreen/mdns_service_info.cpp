@@ -38,6 +38,8 @@ ErrorOr<ServiceInfo> DnsSdInstanceEndpointToServiceInfo(
         const discovery::DnsSdInstanceEndpoint& endpoint) {
     ServiceInfo service_info;
 
+    service_info.instance = endpoint.instance_id();
+    service_info.service = endpoint.service_id();
     service_info.port = endpoint.port();
     for (const IPAddress& address : endpoint.addresses()) {
         if (!service_info.v4_address && address.IsV4()) {

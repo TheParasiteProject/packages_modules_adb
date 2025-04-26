@@ -46,6 +46,9 @@ void send_auth_response(const char* token, size_t token_size, atransport* t);
 int adb_tls_set_certificate(SSL* ssl);
 void adb_auth_tls_handshake(atransport* t);
 
+// Return the location where the host stores its keys
+std::string adb_auth_get_userkey_path();
+
 #else // !ADB_HOST
 
 extern bool auth_required;
