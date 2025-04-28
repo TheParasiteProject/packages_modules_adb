@@ -20,9 +20,12 @@
 #include "transport.h"
 
 #include <errno.h>
+#include <linux/vm_sockets.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
 #include <sys/types.h>
 
 #include <condition_variable>
@@ -40,12 +43,66 @@
 
 #include <android-base/properties.h>
 
+#if defined(__ANDROID__) && !defined(__ANDROID_RECOVERY__)
+#include <com_android_adbd_flags.h>
+#endif
+
 #include "adb.h"
 #include "adb_io.h"
 #include "adb_unique_fd.h"
 #include "adb_utils.h"
 #include "socket_spec.h"
 #include "sysdeps/chrono.h"
+
+static bool should_check_vsock_cid() {
+#if defined(__ANDROID__) && !defined(__ANDROID_RECOVERY__)
+    return com_android_adbd_flags_adbd_restrict_vsock_local_cid();
+#endif
+    return true;
+}
+
+static bool is_local_vsock_connection(const sockaddr_vm& server_addr,
+                                      const sockaddr_vm& client_addr) {
+    // In vsock address, CID is an identifier for detecting whether it's either a virtual machine or
+    // the host of virtual machines. When the connection is from the local process, the address of
+    // the server or the client contains VMADDR_CID_LOCAL or the machine's CID respectively. The
+    // equality checks here is for restricting all possible 4 cases.
+    return server_addr.svm_cid == VMADDR_CID_LOCAL || client_addr.svm_cid == VMADDR_CID_LOCAL ||
+           server_addr.svm_cid == client_addr.svm_cid;
+}
+
+static unique_fd adb_vsock_accept(borrowed_fd serverfd) {
+    sockaddr_vm server_addr, client_addr;
+    socklen_t server_addr_len = sizeof(server_addr);
+    socklen_t client_addr_len = sizeof(client_addr);
+
+    unique_fd fd(adb_socket_accept(serverfd, reinterpret_cast<struct sockaddr*>(&client_addr),
+                                   &client_addr_len));
+    if (fd < 0) {
+        VLOG(TRANSPORT) << "server: failed to adb_socket_accept";
+        return {};
+    }
+
+    if (getsockname(fd.get(), reinterpret_cast<struct sockaddr*>(&server_addr), &server_addr_len) <
+        0) {
+        VLOG(TRANSPORT) << "server: failed to retrieve socket address of accept fd";
+        return {};
+    }
+
+    if (server_addr.svm_family != AF_VSOCK || client_addr.svm_family != AF_VSOCK) {
+        VLOG(TRANSPORT) << "server: invalid vsock address";
+        return {};
+    }
+
+    // Adbd rejects local connection over vsock, to prevent connection establishment by any
+    // arbitrary apps or processes unrelated to virtual machine.
+    if (is_local_vsock_connection(server_addr, client_addr)) {
+        VLOG(TRANSPORT) << "server: adbd restricts vsock connection from local";
+        return {};
+    }
+
+    return fd;
+}
 
 void server_socket_thread(std::string_view addr) {
     adb_thread_setname("server_socket");
@@ -70,7 +127,12 @@ void server_socket_thread(std::string_view addr) {
 
     while (true) {
         D("server: trying to get new connection from fd %d", serverfd.get());
-        unique_fd fd(adb_socket_accept(serverfd, nullptr, nullptr));
+        unique_fd fd;
+        if (addr.starts_with("vsock:") && should_check_vsock_cid()) {
+            fd = adb_vsock_accept(serverfd);
+        } else {
+            fd = unique_fd{adb_socket_accept(serverfd, nullptr, nullptr)};
+        }
         if (fd >= 0) {
             D("server: new connection on fd %d", fd.get());
             close_on_exec(fd.get());
