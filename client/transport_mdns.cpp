@@ -88,6 +88,21 @@ struct DiscoveryState {
     InterfaceInfo interface_info;
 };
 
+static void RequestConnectToDevice(const ServiceInfo& info) {
+    // Connecting to a device does not happen often. We spawn a new thread each time.
+    // Let's re-evaluate if we need a thread-pool or a background thread if this ever becomes
+    // a perf bottleneck.
+    std::thread([=] {
+        VLOG(MDNS) << "Attempting to secure connect to instance=" << info.instance
+                   << " service=" << info.service << " addr4=%s" << info.v4_address << ":"
+                   << info.port;
+        std::string response;
+        connect_device(std::format("{}.{}", info.instance, info.service), &response);
+        VLOG(MDNS) << std::format("secure connect to {} regtype {} ({}:{}) : {}", info.instance,
+                                  info.service, info.v4_address_string(), info.port, response);
+    }).detach();
+}
+
 // Callback provided to service receiver for updates.
 void OnServiceReceiverResult(std::vector<std::reference_wrapper<const ServiceInfo>>,
                              std::reference_wrapper<const ServiceInfo> info,
@@ -123,12 +138,8 @@ void OnServiceReceiverResult(std::vector<std::reference_wrapper<const ServiceInf
                     VLOG(MDNS) << "instance_name=" << info.get().instance << " not in keystore";
                     return;
                 }
-                std::string response;
-                VLOG(MDNS) << "Attempting to auto-connect to instance=" << info.get().instance
-                           << " service=" << info.get().service << " addr4=%s"
-                           << info.get().v4_address << ":" << info.get().port;
-                connect_device(std::format("{}.{}", info.get().instance, info.get().service),
-                               &response);
+
+                RequestConnectToDevice(info.get());
             }
             break;
         default:
@@ -205,12 +216,7 @@ bool ConnectAdbSecureDevice(const ServiceInfo& info) {
         return false;
     }
 
-    std::string response;
-    connect_device(std::format("{}.{}", info.instance, info.service), &response);
-    std::string debug_message =
-            std::format("Secure connect to {} regtype {} ({}:{}) : {}", info.instance, info.service,
-                        info.v4_address_string(), info.port, response);
-    VLOG(MDNS) << debug_message;
+    RequestConnectToDevice(info);
     return true;
 }
 
