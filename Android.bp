@@ -661,6 +661,7 @@ cc_library {
         "libbrotli",
         "libdiagnose_usb",
         "liblz4",
+        "libmdnssd",
         "libprotobuf-cpp-lite",
         "libzstd",
     ],
