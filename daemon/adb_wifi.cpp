@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "adb_wifi.h"
+#include "adbd_wifi.h"
 
 #include <unistd.h>
 #include <optional>

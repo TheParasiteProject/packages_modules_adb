@@ -44,7 +44,6 @@
 #include "adb.h"
 #include "adb_auth.h"
 #include "adb_io.h"
-#include "adb_wifi.h"
 #include "daemon/adbd_wifi.h"
 #include "fdevent/fdevent.h"
 #include "transport.h"

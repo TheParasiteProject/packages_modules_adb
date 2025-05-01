@@ -16,5 +16,13 @@
 
 #pragma once
 
+#include "adb_auth.h"
+#include "transport.h"
+
 void enable_wifi_debugging();
 void disable_wifi_debugging();
+
+struct AdbdAuthContext;
+
+void adbd_wifi_init(AdbdAuthContext* ctx);
+void adbd_wifi_secure_connect(atransport* t);
