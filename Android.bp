@@ -602,9 +602,13 @@ cc_library_static {
                 "daemon/usb_ffs.cpp",
                 "daemon/watchdog.cpp",
             ],
+            shared_libs: [
+                "adbd_flags_c_lib",
+            ],
         },
         recovery: {
             exclude_shared_libs: [
+                "adbd_flags_c_lib",
                 "libadb_pairing_auth",
                 "libadb_pairing_connection",
                 "libapp_processes_protos_lite",
@@ -685,6 +689,7 @@ cc_library {
                 "daemon/restart_service.cpp",
             ],
             shared_libs: [
+                "adbd_flags_c_lib",
                 "libmdnssd",
                 "libselinux",
             ],
@@ -697,6 +702,7 @@ cc_library {
                 "daemon/abb_service.cpp",
             ],
             exclude_shared_libs: [
+                "adbd_flags_c_lib",
                 "libadb_pairing_auth",
                 "libadb_pairing_connection",
             ],
@@ -826,6 +832,9 @@ cc_binary {
         android: {
             static_libs: [
                 "android_trade_in_mode_flags_cc_lib",
+            ],
+            shared_libs: [
+                "adbd_flags_c_lib",
             ],
         },
     },
@@ -1103,4 +1112,21 @@ cc_test_host {
         "fastdeploy/testdata/sample.apk",
         "fastdeploy/testdata/sample.cd",
     ],
+}
+
+aconfig_declarations {
+    name: "adbd_flags",
+    container: "com.android.adbd",
+    package: "com.android.adbd.flags",
+    srcs: ["adbd_flags.aconfig"],
+}
+
+cc_aconfig_library {
+    name: "adbd_flags_c_lib",
+    aconfig_declarations: "adbd_flags",
+    apex_available: [
+        "//apex_available:platform",
+        "com.android.adbd",
+    ],
+    min_sdk_version: "apex_inherit",
 }

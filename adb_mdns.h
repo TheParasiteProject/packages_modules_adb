@@ -66,7 +66,6 @@ std::optional<int> adb_DNSServiceIndexByName(std::string_view reg_type);
 // See ADB_MDNS_AUTO_CONNECT environment variable for more info.
 bool adb_DNSServiceShouldAutoConnect(std::string_view service_name, std::string_view instance_name);
 
-void mdns_cleanup();
 std::string mdns_check();
 std::string mdns_list_discovered_services();
 
