@@ -564,6 +564,7 @@ cc_library_static {
         "daemon/auth.cpp",
         "daemon/jdwp_service.cpp",
         "daemon/logging.cpp",
+        "daemon/mdns.cpp",
         "daemon/transport_socket_server.cpp",
     ],
 
@@ -571,6 +572,7 @@ cc_library_static {
 
     static_libs: [
         "libdiagnose_usb",
+        "libmdnssd",
     ],
 
     shared_libs: [
@@ -686,7 +688,6 @@ cc_library {
             srcs: [
                 "daemon/abb_service.cpp",
                 "daemon/framebuffer_service.cpp",
-                "daemon/mdns.cpp",
                 "daemon/restart_service.cpp",
             ],
             shared_libs: [
