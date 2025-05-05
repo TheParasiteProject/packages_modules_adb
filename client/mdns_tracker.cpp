@@ -65,10 +65,10 @@ static std::string list_mdns_services() {
         ipv6->append(service.v6_address_string());
 
         if (service.attributes.contains("name")) {
-            s->set_device_model(service.attributes.at("name"));
+            s->set_product_model(service.attributes.at("name"));
         }
         if (service.attributes.contains("api")) {
-            s->set_build_version_sdk(service.attributes.at("api"));
+            s->set_build_version_sdk_full(service.attributes.at("api"));
         }
     });
 
