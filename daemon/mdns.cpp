@@ -74,7 +74,7 @@ static std::vector<char> buildTxtRecord() {
     std::map<std::string, std::string> attributes;
     attributes["v"] = std::to_string(ADB_SECURE_SERVICE_VERSION);
     attributes["name"] = android::base::GetProperty("ro.product.model", "");
-    attributes["api"] = android::base::GetProperty("ro.build.version.sdk", "");
+    attributes["api"] = android::base::GetProperty("ro.build.version.sdk_full", "");
 
     // See https://tools.ietf.org/html/rfc6763 for the format of DNS TXT record.
     std::vector<char> record;
