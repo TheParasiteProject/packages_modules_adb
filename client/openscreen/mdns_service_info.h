@@ -17,6 +17,7 @@
 #pragma once
 
 #include <string>
+#include <tuple>
 
 #include <discovery/dnssd/public/dns_sd_instance_endpoint.h>
 #include <platform/base/ip_address.h>
@@ -34,6 +35,9 @@ struct ServiceInfo {
 
     std::string v4_address_string() const;
     std::string v6_address_string() const;
+
+    // Store keys/values from TXT resource record
+    std::unordered_map<std::string, std::string> attributes;
 };  // ServiceInfo
 
 inline std::ostream& operator<<(std::ostream& os, const ServiceInfo& service_info) {
@@ -45,5 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const ServiceInfo& service_inf
 
 openscreen::ErrorOr<ServiceInfo> DnsSdInstanceEndpointToServiceInfo(
         const openscreen::discovery::DnsSdInstanceEndpoint& endpoint);
+
+std::tuple<bool, std::string, std::string> ParseTxtKeyValue(const std::string& kv);
 
 }  // namespace mdns

@@ -44,6 +44,7 @@ static DNSServiceRef mdns_refs[kNumADBDNSServices] GUARDED_BY(mdns_lock);
 static bool mdns_registered[kNumADBDNSServices] GUARDED_BY(mdns_lock);
 
 void start_mdnsd() {
+#if defined(__ANDROID__)
     if (android::base::GetProperty("init.svc.mdnsd", "") == "running") {
         return;
     }
@@ -53,6 +54,7 @@ void start_mdnsd() {
     if (! android::base::WaitForProperty("init.svc.mdnsd", "running", 5s)) {
         LOG(ERROR) << "Could not start mdnsd.";
     }
+#endif
 }
 
 static void mdns_callback(DNSServiceRef /*ref*/,
@@ -72,7 +74,7 @@ static std::vector<char> buildTxtRecord() {
     std::map<std::string, std::string> attributes;
     attributes["v"] = std::to_string(ADB_SECURE_SERVICE_VERSION);
     attributes["name"] = android::base::GetProperty("ro.product.model", "");
-    attributes["api"] = android::base::GetProperty("ro.build.version.sdk", "");
+    attributes["api"] = android::base::GetProperty("ro.build.version.sdk_full", "");
 
     // See https://tools.ietf.org/html/rfc6763 for the format of DNS TXT record.
     std::vector<char> record;

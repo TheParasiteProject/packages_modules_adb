@@ -270,6 +270,7 @@ cc_library_host_static {
         "client/adb_wifi.cpp",
         "client/detach.cpp",
         "client/discovered_services.cpp",
+        "client/mdns_tracker.cpp",
         "client/usb_libusb.cpp",
         "client/usb_libusb_device.cpp",
         "client/usb_libusb_hotplug.cpp",
@@ -563,6 +564,7 @@ cc_library_static {
         "daemon/auth.cpp",
         "daemon/jdwp_service.cpp",
         "daemon/logging.cpp",
+        "daemon/mdns.cpp",
         "daemon/transport_socket_server.cpp",
     ],
 
@@ -570,6 +572,7 @@ cc_library_static {
 
     static_libs: [
         "libdiagnose_usb",
+        "libmdnssd",
     ],
 
     shared_libs: [
@@ -685,7 +688,6 @@ cc_library {
             srcs: [
                 "daemon/abb_service.cpp",
                 "daemon/framebuffer_service.cpp",
-                "daemon/mdns.cpp",
                 "daemon/restart_service.cpp",
             ],
             shared_libs: [

@@ -41,6 +41,11 @@
 #include "sysdeps.h"
 #include "transport.h"
 
+#if ADB_HOST
+#include "client/host_services.h"
+#include "client/mdns_tracker.h"
+#endif
+
 namespace {
 
 void service_bootstrap_func(std::string service_name, std::function<void(unique_fd)> func,
@@ -278,6 +283,8 @@ asocket* host_service_to_socket(std::string_view name, std::string_view serial,
         unique_fd fd = create_service_thread(
                 "pair", std::bind(pair_service, std::placeholders::_1, host, password));
         return create_local_socket(std::move(fd));
+    } else if (android::base::ConsumePrefix(&name, HostServices::kTrackMdnsServices)) {
+        return create_mdns_tracker();
     }
     return nullptr;
 }

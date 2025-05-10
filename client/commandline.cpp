@@ -36,12 +36,15 @@
 #include <string>
 #include <thread>
 #include <vector>
+using namespace std::string_literals;
 
 #include <android-base/file.h>
 #include <android-base/logging.h>
 #include <android-base/parseint.h>
 #include <android-base/stringprintf.h>
 #include <android-base/strings.h>
+
+#include "client/host_services.h"
 
 #if defined(_WIN32)
 #define _POSIX
@@ -1944,19 +1947,34 @@ int adb_commandline(int argc, const char** argv) {
             error_exit("failed to check server version: %s", error.c_str());
         }
 
-        std::string query = "host:mdns:";
         if (!strcmp(argv[0], "check")) {
-            if (argc != 1) error_exit("mdns %s doesn't take any arguments", argv[0]);
-            query += "check";
+            if (argc != 1) {
+                error_exit("mdns %s doesn't take any arguments", argv[0]);
+            }
+            return adb_query_command("host:mdns:check");
         } else if (!strcmp(argv[0], "services")) {
-            if (argc != 1) error_exit("mdns %s doesn't take any arguments", argv[0]);
-            query += "services";
+            if (argc != 1) {
+                error_exit("mdns %s doesn't take any arguments", argv[0]);
+            }
             printf("List of discovered mdns services\n");
+            return adb_query_command("host:mdns:services");
+        } else if (!strcmp(argv[0], "track-services")) {
+            if (argc != 2) {
+                error_exit("mdns %s take two arguments", argv[0]);
+            }
+
+            std::string service = "host:"s + HostServices::kTrackMdnsServices;
+            if (!strcmp(argv[1], "--proto-binary")) {
+                adb_connect_command(service);
+            } else if (!strcmp(argv[1], "--proto-text")) {
+                ProtoBinaryToText<adb::proto::MdnsServices> callback("\nServices:\n");
+                adb_connect_command(service, nullptr, &callback);
+            } else {
+                error_exit("unknown mdns command [%s] flag '%s'", argv[0], argv[1]);
+            }
         } else {
             error_exit("unknown mdns command [%s]", argv[0]);
         }
-
-        return adb_query_command(query);
     }
     /* do_sync_*() commands */
     else if (!strcmp(argv[0], "ls")) {
