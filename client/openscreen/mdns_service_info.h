@@ -29,8 +29,8 @@ namespace mdns {
 struct ServiceInfo {
     std::string instance;
     std::string service;
-    openscreen::IPAddress v4_address;
-    openscreen::IPAddress v6_address;
+    std::optional<openscreen::IPAddress> v4_address;
+    std::optional<openscreen::IPAddress> v6_address;
     uint16_t port;
 
     std::string v4_address_string() const;
@@ -42,8 +42,13 @@ struct ServiceInfo {
 
 inline std::ostream& operator<<(std::ostream& os, const ServiceInfo& service_info) {
     os << "Instance: " << service_info.instance << ", Service: " << service_info.service
-       << ", Port: " << service_info.port << ", IPv4: " << service_info.v4_address
-       << ", IPv6: " << service_info.v6_address;
+       << ", Port: " << service_info.port;
+    if (service_info.v4_address) {
+        os << ", IPv4: " << service_info.v4_address.value();
+    }
+    if (service_info.v6_address) {
+        os << ", IPv6: " << service_info.v6_address.value();
+    }
     return os;
 }
 
