@@ -102,7 +102,6 @@ bool load_known_hosts_from_file(const std::string& path, adb::proto::AdbKnownHos
     // Check for file existence.
     struct stat buf;
     if (stat(path.c_str(), &buf) == -1) {
-        LOG(INFO) << "Known hosts file [" << path << "] does not exist...";
         return false;
     }
 
