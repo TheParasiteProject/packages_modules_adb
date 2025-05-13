@@ -31,10 +31,45 @@ void DiscoveredServices::ServiceCreated(const ServiceInfo& service_info) {
     services_[fq_name(service_info)] = service_info;
 }
 
-void DiscoveredServices::ServiceUpdated(const ServiceInfo& service_info) {
+bool DiscoveredServices::ServiceUpdated(const ServiceInfo& service_info) {
     std::lock_guard lock(services_mutex_);
-    VLOG(MDNS) << "Service update " << service_info;
-    services_[fq_name(service_info)] = service_info;
+
+    const auto key = fq_name(service_info);
+    if (!services_.contains(key)) {
+        services_[key] = service_info;
+        return true;
+    }
+
+    auto& current_service = services_[key];
+    bool updated = false;
+
+    if (service_info.v4_address.has_value() &&
+        service_info.v4_address != current_service.v4_address) {
+        current_service.v4_address = service_info.v4_address;
+        updated = true;
+    }
+
+    if (service_info.v6_address.has_value() &&
+        service_info.v6_address != current_service.v6_address) {
+        current_service.v6_address = service_info.v6_address;
+        updated = true;
+    }
+
+    if (service_info.port != current_service.port) {
+        current_service.port = service_info.port;
+        updated = true;
+    }
+
+    if (service_info.attributes != current_service.attributes) {
+        current_service.attributes = service_info.attributes;
+        updated = true;
+    }
+
+    if (updated) {
+        VLOG(MDNS) << "Service update " << service_info;
+    }
+
+    return updated;
 }
 
 void DiscoveredServices::ServiceDeleted(const ServiceInfo& service_info) {

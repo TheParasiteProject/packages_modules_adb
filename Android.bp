@@ -364,6 +364,7 @@ cc_test_host {
     defaults: ["adb_defaults"],
     srcs: libadb_test_srcs + [
         "client/commandline_test.cpp",
+        "client/discovered_services_test.cpp",
         "client/mdns_utils_test.cpp",
         "test_utils/test_utils.cpp",
     ],

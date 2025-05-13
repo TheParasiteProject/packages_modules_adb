@@ -106,13 +106,14 @@ static void RequestConnectToDevice(const ServiceInfo& info) {
 void OnServiceReceiverResult(std::vector<std::reference_wrapper<const ServiceInfo>>,
                              std::reference_wrapper<const ServiceInfo> info,
                              ServicesUpdatedState state) {
+    bool updated = true;
     switch (state) {
         case ServicesUpdatedState::EndpointCreated: {
             discovered_services.ServiceCreated(info);
             break;
         }
         case ServicesUpdatedState::EndpointUpdated: {
-            discovered_services.ServiceUpdated(info);
+            updated = discovered_services.ServiceUpdated(info);
             break;
         }
         case ServicesUpdatedState::EndpointDeleted: {
@@ -121,7 +122,9 @@ void OnServiceReceiverResult(std::vector<std::reference_wrapper<const ServiceInf
         }
     }
 
-    update_mdns_trackers();
+    if (updated) {
+        update_mdns_trackers();
+    }
 
     switch (state) {
         case ServicesUpdatedState::EndpointCreated:
