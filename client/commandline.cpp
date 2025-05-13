@@ -1965,10 +1965,10 @@ int adb_commandline(int argc, const char** argv) {
 
             std::string service = "host:"s + HostServices::kTrackMdnsServices;
             if (!strcmp(argv[1], "--proto-binary")) {
-                adb_connect_command(service);
+                return adb_connect_command(service);
             } else if (!strcmp(argv[1], "--proto-text")) {
                 ProtoBinaryToText<adb::proto::MdnsServices> callback("\nServices:\n");
-                adb_connect_command(service, nullptr, &callback);
+                return adb_connect_command(service, nullptr, &callback);
             } else {
                 error_exit("unknown mdns command [%s] flag '%s'", argv[0], argv[1]);
             }
