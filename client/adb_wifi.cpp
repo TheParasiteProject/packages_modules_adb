@@ -199,7 +199,7 @@ void adb_wifi_pair_device(const std::string& host, const std::string& password,
     auto priv_key = adb_auth_get_user_privkey();
     auto x509_cert = GenerateX509Certificate(priv_key.get());
     if (!x509_cert) {
-        LOG(ERROR) << "Unable to create X509 certificate for pairing";
+        response = "Unable to create X509 certificate for pairing";
         return;
     }
     auto cert_str = X509ToPEMString(x509_cert.get());

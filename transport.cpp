@@ -300,7 +300,7 @@ BlockingConnectionAdapter::BlockingConnectionAdapter(std::unique_ptr<BlockingCon
     : underlying_(std::move(connection)) {}
 
 BlockingConnectionAdapter::~BlockingConnectionAdapter() {
-    LOG(INFO) << "BlockingConnectionAdapter(" << Serial() << "): destructing";
+    VLOG(ADB) << "BlockingConnectionAdapter(" << Serial() << "): destructing";
     Stop();
 }
 
@@ -313,7 +313,7 @@ bool BlockingConnectionAdapter::Start() {
     StartReadThread();
 
     write_thread_ = std::thread([this]() {
-        LOG(INFO) << Serial() << ": write thread spawning";
+        VLOG(ADB) << Serial() << ": write thread spawning";
         while (true) {
             std::unique_lock<std::mutex> lock(mutex_);
             ScopedLockAssertion assume_locked(mutex_);
@@ -342,11 +342,11 @@ bool BlockingConnectionAdapter::Start() {
 
 void BlockingConnectionAdapter::StartReadThread() {
     read_thread_ = std::thread([this]() {
-        LOG(INFO) << Serial() << ": read thread spawning";
+        VLOG(ADB) << Serial() << ": read thread spawning";
         while (true) {
             auto packet = std::make_unique<apacket>();
             if (!underlying_->Read(packet.get())) {
-                PLOG(INFO) << Serial() << ": read failed";
+                VLOG(ADB) << Serial() << ": read failed";
                 break;
             }
 
@@ -361,7 +361,7 @@ void BlockingConnectionAdapter::StartReadThread() {
             // handshake. So this read thread must stop and resume after the
             // handshake completes otherwise this will interfere in the process.
             if (got_stls_cmd) {
-                LOG(INFO) << Serial() << ": Received STLS packet. Stopping read thread.";
+                VLOG(ADB) << Serial() << ": Received STLS packet. Stopping read thread.";
                 return;
             }
         }
@@ -383,17 +383,17 @@ void BlockingConnectionAdapter::Reset() {
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (!started_) {
-            LOG(INFO) << "BlockingConnectionAdapter(" << Serial() << "): not started";
+            VLOG(ADB) << "BlockingConnectionAdapter(" << Serial() << "): not started";
             return;
         }
 
         if (stopped_) {
-            LOG(INFO) << "BlockingConnectionAdapter(" << Serial() << "): already stopped";
+            VLOG(ADB) << "BlockingConnectionAdapter(" << Serial() << "): already stopped";
             return;
         }
     }
 
-    LOG(INFO) << "BlockingConnectionAdapter(" << Serial() << "): resetting";
+    VLOG(ADB) << "BlockingConnectionAdapter(" << Serial() << "): resetting";
     this->underlying_->Reset();
     Stop();
 }
@@ -402,19 +402,19 @@ void BlockingConnectionAdapter::Stop() {
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (!started_) {
-            LOG(INFO) << "BlockingConnectionAdapter(" << Serial() << "): not started";
+            VLOG(ADB) << "BlockingConnectionAdapter(" << Serial() << "): not started";
             return;
         }
 
         if (stopped_) {
-            LOG(INFO) << "BlockingConnectionAdapter(" << Serial() << "): already stopped";
+            VLOG(ADB) << "BlockingConnectionAdapter(" << Serial() << "): already stopped";
             return;
         }
 
         stopped_ = true;
     }
 
-    LOG(INFO) << "BlockingConnectionAdapter(" << Serial() << "): stopping";
+    VLOG(ADB) << "BlockingConnectionAdapter(" << Serial() << "): stopping";
 
     this->underlying_->Close();
     this->cv_.notify_one();
@@ -432,7 +432,7 @@ void BlockingConnectionAdapter::Stop() {
     read_thread.join();
     write_thread.join();
 
-    LOG(INFO) << "BlockingConnectionAdapter(" << Serial() << "): stopped";
+    VLOG(ADB) << "BlockingConnectionAdapter(" << Serial() << "): stopped";
     std::call_once(this->error_flag_, [this]() { transport_->HandleError("requested stop"); });
 }
 

@@ -33,17 +33,6 @@ std::string ServiceInfo::v4_address_string() const {
     return ss.str();
 }
 
-std::string ServiceInfo::v6_address_string() const {
-    if (v6_address.has_value()) {
-        std::stringstream ss;
-        ss << v6_address.value();
-        return ss.str();
-    }
-    std::stringstream ss;
-    ss << IPAddress::kAnyV6();
-    return ss.str();
-}
-
 // Parse a key/value from a TXT record. Format expected is "key=value"
 std::tuple<bool, std::string, std::string> ParseTxtKeyValue(const std::string& kv) {
     auto split_loc = std::ranges::find(kv, static_cast<uint8_t>('='));
@@ -74,7 +63,6 @@ static std::unordered_map<std::string, std::string> ParseTxt(
             VLOG(MDNS) << "Bad TXT value '" << skv << "'";
             continue;
         }
-        VLOG(MDNS) << "Parsed TXT key='" << key << "', value='" << value << "'";
         kv[key] = value;
     }
     return kv;
@@ -96,9 +84,7 @@ ErrorOr<ServiceInfo> DnsSdInstanceEndpointToServiceInfo(
                 break;
             }
             case IPAddress::Version::kV6: {
-                if (!service_info.v6_address.has_value()) {
-                    service_info.v6_address = address;
-                }
+                service_info.v6_addresses.insert(address);
                 break;
             }
         }

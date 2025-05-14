@@ -64,9 +64,9 @@ static std::string list_mdns_services() {
             s->set_ipv4(service.v4_address_string());
         }
 
-        if (service.v6_address.has_value()) {
+        for (auto& address : service.v6_addresses) {
             auto ipv6 = s->add_ipv6();
-            ipv6->append(service.v6_address_string());
+            ipv6->append(mdns::to_string(address));
         }
 
         if (service.attributes.contains("name")) {

@@ -49,10 +49,11 @@ bool DiscoveredServices::ServiceUpdated(const ServiceInfo& service_info) {
         updated = true;
     }
 
-    if (service_info.v6_address.has_value() &&
-        service_info.v6_address != current_service.v6_address) {
-        current_service.v6_address = service_info.v6_address;
-        updated = true;
+    for (auto& new_address : service_info.v6_addresses) {
+        if (!current_service.v6_addresses.contains(new_address)) {
+            updated = true;
+            current_service.v6_addresses.insert(new_address);
+        }
     }
 
     if (service_info.port != current_service.port) {

@@ -102,6 +102,29 @@ static void RequestConnectToDevice(const ServiceInfo& info) {
     }).detach();
 }
 
+void AttemptAutoConnect(const std::reference_wrapper<const ServiceInfo> info) {
+    if (!adb_DNSServiceShouldAutoConnect(info.get().service, info.get().instance)) {
+        return;
+    }
+    if (!info.get().v4_address.has_value()) {
+        return;
+    }
+
+    const auto index = adb_DNSServiceIndexByName(info.get().service);
+    if (!index) {
+        return;
+    }
+
+    // Don't try to auto-connect if not in the keystore.
+    if (*index == kADBSecureConnectServiceRefIndex &&
+        !adb_wifi_is_known_host(info.get().instance)) {
+        VLOG(MDNS) << "instance_name=" << info.get().instance << " not in keystore";
+        return;
+    }
+
+    RequestConnectToDevice(info.get());
+}
+
 // Callback provided to service receiver for updates.
 void OnServiceReceiverResult(std::vector<std::reference_wrapper<const ServiceInfo>>,
                              std::reference_wrapper<const ServiceInfo> info,
@@ -110,10 +133,14 @@ void OnServiceReceiverResult(std::vector<std::reference_wrapper<const ServiceInf
     switch (state) {
         case ServicesUpdatedState::EndpointCreated: {
             discovered_services.ServiceCreated(info);
+            AttemptAutoConnect(info);
             break;
         }
         case ServicesUpdatedState::EndpointUpdated: {
             updated = discovered_services.ServiceUpdated(info);
+            if (updated) {
+                AttemptAutoConnect(info);
+            }
             break;
         }
         case ServicesUpdatedState::EndpointDeleted: {
@@ -124,30 +151,6 @@ void OnServiceReceiverResult(std::vector<std::reference_wrapper<const ServiceInf
 
     if (updated) {
         update_mdns_trackers();
-    }
-
-    switch (state) {
-        case ServicesUpdatedState::EndpointCreated:
-        case ServicesUpdatedState::EndpointUpdated:
-            if (adb_DNSServiceShouldAutoConnect(info.get().service, info.get().instance) &&
-                info.get().v4_address) {
-                auto index = adb_DNSServiceIndexByName(info.get().service);
-                if (!index) {
-                    return;
-                }
-
-                // Don't try to auto-connect if not in the keystore.
-                if (*index == kADBSecureConnectServiceRefIndex &&
-                    !adb_wifi_is_known_host(info.get().instance)) {
-                    VLOG(MDNS) << "instance_name=" << info.get().instance << " not in keystore";
-                    return;
-                }
-
-                RequestConnectToDevice(info.get());
-            }
-            break;
-        default:
-            break;
     }
 }
 

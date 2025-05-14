@@ -59,9 +59,28 @@ TEST(DiscoveredServicesTest, NonUpdateV6) {
     ServiceInfo service;
     service.instance = "foo";
     service.service = "bar";
-    service.v6_address = openscreen::IPAddress::kV6LoopbackAddress();
+    service.v6_addresses = {openscreen::IPAddress::kV6LoopbackAddress()};
 
     services.ServiceCreated(service);
     auto updated = services.ServiceUpdated(service);
+    ASSERT_FALSE(updated);
+}
+
+TEST(DiscoveredServicesTest, NonUpdateV6WithDifferentSet) {
+    DiscoveredServices services;
+
+    ServiceInfo service;
+    service.instance = "foo";
+    service.service = "bar";
+    service.v6_addresses = {openscreen::IPAddress::kV6LoopbackAddress()};
+
+    services.ServiceCreated(service);
+    auto updated = services.ServiceUpdated(service);
+    ASSERT_FALSE(updated);
+
+    ServiceInfo service_update;
+    service_update.instance = "foo";
+    service_update.service = "bar";
+    updated = services.ServiceUpdated(service_update);
     ASSERT_FALSE(updated);
 }
