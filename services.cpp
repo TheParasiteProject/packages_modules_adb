@@ -35,7 +35,9 @@
 #include "adb_io.h"
 #include "adb_unique_fd.h"
 #include "adb_utils.h"
-#include "adb_wifi.h"
+#if ADB_HOST
+#include "client/adb_wifi.h"
+#endif
 #include "services.h"
 #include "socket_spec.h"
 #include "sysdeps.h"

@@ -49,11 +49,11 @@
 #include "adb_auth.h"
 #include "adb_listeners.h"
 #include "adb_utils.h"
-#include "adb_wifi.h"
 #include "socket_spec.h"
 #include "tradeinmode.h"
 #include "transport.h"
 
+#include "daemon/adbd_wifi.h"
 #include "daemon/jdwp_service.h"
 #include "daemon/mdns.h"
 #include "daemon/transport_daemon.h"

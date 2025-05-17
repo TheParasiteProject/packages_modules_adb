@@ -36,7 +36,7 @@
 #include "adb_listeners.h"
 #include "adb_mdns.h"
 #include "adb_utils.h"
-#include "adb_wifi.h"
+#include "client/adb_wifi.h"
 #include "client/mdns_utils.h"
 #include "client/transport_client.h"
 #include "client/usb.h"

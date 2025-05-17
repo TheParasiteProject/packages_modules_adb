@@ -94,9 +94,7 @@ static void RequestConnectToDevice(const ServiceInfo& info) {
     // Let's re-evaluate if we need a thread-pool or a background thread if this ever becomes
     // a perf bottleneck.
     std::thread([=] {
-        VLOG(MDNS) << "Attempting to secure connect to instance=" << info.instance
-                   << " service=" << info.service << " addr4=%s" << info.v4_address << ":"
-                   << info.port;
+        VLOG(MDNS) << "Attempting to secure connect to instance '" << info << "'";
         std::string response;
         connect_device(std::format("{}.{}", info.instance, info.service), &response);
         VLOG(MDNS) << std::format("secure connect to {} regtype {} ({}:{}) : {}", info.instance,
