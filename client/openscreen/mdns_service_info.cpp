@@ -23,14 +23,24 @@ using namespace openscreen;
 namespace mdns {
 
 std::string ServiceInfo::v4_address_string() const {
+    if (v4_address.has_value()) {
+        std::stringstream ss;
+        ss << v4_address.value();
+        return ss.str();
+    }
     std::stringstream ss;
-    ss << v4_address;
+    ss << IPAddress::kAnyV4();
     return ss.str();
 }
 
 std::string ServiceInfo::v6_address_string() const {
+    if (v6_address.has_value()) {
+        std::stringstream ss;
+        ss << v6_address.value();
+        return ss.str();
+    }
     std::stringstream ss;
-    ss << v6_address;
+    ss << IPAddress::kAnyV6();
     return ss.str();
 }
 
@@ -78,13 +88,21 @@ ErrorOr<ServiceInfo> DnsSdInstanceEndpointToServiceInfo(
     service_info.service = endpoint.service_id();
     service_info.port = endpoint.port();
     for (const IPAddress& address : endpoint.addresses()) {
-        if (!service_info.v4_address && address.IsV4()) {
-            service_info.v4_address = address;
-        } else if (!service_info.v6_address && address.IsV6()) {
-            service_info.v6_address = address;
+        switch (address.version()) {
+            case IPAddress::Version::kV4: {
+                if (!service_info.v4_address.has_value()) {
+                    service_info.v4_address = address;
+                }
+                break;
+            }
+            case IPAddress::Version::kV6: {
+                if (!service_info.v6_address.has_value()) {
+                    service_info.v6_address = address;
+                }
+                break;
+            }
         }
     }
-    CHECK(service_info.v4_address || service_info.v6_address);
 
     auto txt = endpoint.txt().GetData();
     service_info.attributes = ParseTxt(txt);

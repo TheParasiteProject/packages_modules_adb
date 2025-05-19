@@ -60,9 +60,14 @@ static std::string list_mdns_services() {
         s->set_service(service.service);
         s->set_port(service.port);
 
-        s->set_ipv4(service.v4_address_string());
-        auto ipv6 = s->add_ipv6();
-        ipv6->append(service.v6_address_string());
+        if (service.v4_address.has_value()) {
+            s->set_ipv4(service.v4_address_string());
+        }
+
+        if (service.v6_address.has_value()) {
+            auto ipv6 = s->add_ipv6();
+            ipv6->append(service.v6_address_string());
+        }
 
         if (service.attributes.contains("name")) {
             s->set_product_model(service.attributes.at("name"));
