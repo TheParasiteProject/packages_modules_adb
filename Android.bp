@@ -878,6 +878,9 @@ phony {
         "libadbd_fs.recovery",
         "reboot.recovery",
     ],
+    // This property is needed to inform Soong that the module and its deps are
+    // installed as part of the recovery partition.
+    recovery: true,
 }
 
 cc_binary {
