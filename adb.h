@@ -198,9 +198,6 @@ void put_apacket(apacket* p);
 #define ADB_DBC_CLASS 0xDC
 #define ADB_DBC_SUBCLASS 0x2
 
-bool connect_emulator(int port);
-int connect_emulator_arbitrary_ports(int console_port, int adb_port, std::string* error);
-
 extern const char* adb_device_banner;
 
 #define CHUNK_SIZE (64 * 1024)

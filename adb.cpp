@@ -1522,7 +1522,10 @@ HostRequestResult handle_host_request(std::string_view service, TransportType ty
         if (!ParseUint(&port, service)) {
           LOG(ERROR) << "received invalid port for emulator: " << service;
         } else {
-            connect_emulator(port);
+            // We are running on the fdevent thread. Connect is a long operation which
+            // can potentially block 10s until connection is established. We must run
+            // it on another thread.
+            std::thread([=] { connect_emulator(port); }).detach();
         }
 
         /* we don't even need to send a reply */
