@@ -3,7 +3,7 @@ container: "com.android.adbd"
 
 flag {
   name: "adbd_restrict_vsock_local_cid"
-  namespace: "android_adbd"
+  namespace: "com_android_adbd"
   description: "This flag is for restricting local CID access via vsock socket in adbd"
   bug: "414473085"
 }
