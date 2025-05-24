@@ -156,6 +156,7 @@ static void connect_service(unique_fd fd, std::string host) {
 static void pair_service(unique_fd fd, std::string host, std::string password) {
     std::string response;
     adb_wifi_pair_device(host, password, response);
+    VLOG(MDNS) << "Pairing response: '" << response << "'";
     if (android::base::StartsWith(response, "Successful")) {
         SendProtocolString(fd.get(), response);
     } else {

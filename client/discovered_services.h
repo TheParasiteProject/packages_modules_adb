@@ -25,7 +25,11 @@ namespace mdns {
 class DiscoveredServices {
   public:
     void ServiceCreated(const ServiceInfo& service_info);
-    void ServiceUpdated(const ServiceInfo& service_info);
+
+    // Return true if the provided service_info resulted in an update
+    // of the internal state of DiscoveredServices
+    bool ServiceUpdated(const ServiceInfo& service_info);
+
     void ServiceDeleted(const ServiceInfo& service_info);
     std::optional<ServiceInfo> FindInstance(const std::string& service,
                                             const std::string& instance);
