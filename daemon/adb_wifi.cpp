@@ -174,11 +174,8 @@ static void start_wifi_enabled_observer() {
 }  // namespace
 
 static void adbd_send_tls_server_port(uint16_t port) {
-    if (__builtin_available(android 37, *)) {
-        adbd_auth_send_tls_server_port(auth_ctx, port);
-    } else {
-        LOG(WARNING) << "Unable to advertise TLS port, API unavailable";
-    }
+    LOG(INFO) << "Sending TLS port to framework via system property '" << port << "'";
+    SetProperty("service.adb.tls.port", std::to_string(port));
 }
 
 void enable_wifi_debugging() {
@@ -217,15 +214,7 @@ void disable_wifi_debugging() {
 void adbd_wifi_init(AdbdAuthContext* ctx) {
     auth_ctx = ctx;
 #if defined(__ANDROID__)
-    if (adbd_auth_supports_feature(AdbdAuthFeature::WifiLifeCycle)) {
-        if (android::base::GetProperty(kWifiEnabledProp, "") == "1") {
-            enable_wifi_debugging();
-        }
-    } else {
-        // If the Frameworks does not send event on adbd_auth, we need to listen
-        // for modification of a system property to detect start/stop requests.
-        start_wifi_enabled_observer();
-    }
+    start_wifi_enabled_observer();
 #endif  //__ANDROID__
 }
 
