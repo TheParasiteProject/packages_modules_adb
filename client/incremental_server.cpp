@@ -327,7 +327,13 @@ bool IncrementalServer::SkipToRequest(void* buffer, size_t* size, bool blocking)
             continue;
         }
 
-        D("Failed to read from fd %d: %d. Exit", adb_fd_.get(), errno);
+        // Nothing was read. Remove the padding added before the read.
+        buffer_.resize(bsize);
+        if (r == 0) {
+            D("Disconnected from fd %d. Exit", adb_fd_.get());
+        } else {
+            D("Failed to read from fd %d: %d. Exit", adb_fd_.get(), errno);
+        }
         break;
     }
     // socket is closed. print remaining messages

@@ -36,6 +36,7 @@
 #include <openssl/base64.h>
 
 #include "adb_install.h"
+#include "adb_io.h"
 #include "adb_unique_fd.h"
 #include "commandline.h"
 #include "incremental_utils.h"
@@ -327,12 +328,18 @@ static bool wait_for_installation(int read_fd, std::string* error) {
     static constexpr int kMaxMessageSize = 256;
     std::string child_stdout;
     child_stdout.resize(kMaxMessageSize);
-    int bytes_read = adb_read(read_fd, child_stdout.data(), kMaxMessageSize);
-    if (bytes_read < 0) {
+    if (!ReadFdExactly(read_fd, child_stdout.data(), kMaxMessageSize) && errno != 0) {
         *error = std::format("Failed to read output: {}", strerror(errno));
         return false;
     }
-    child_stdout.resize(bytes_read);
+    // Truncate to '\0'. `ReadFdExactly` reads until the end of the steam and leaves the remaining
+    // bytes in the buffer unchanged, which were default-initialized ('\0') by
+    // `std::string::resize`.
+    size_t len = child_stdout.find('\0');
+    if (len != std::string::npos) {
+        child_stdout.resize(len);
+    }
+
     // wait till installation either succeeds or fails
     if (child_stdout.find("Success") != std::string::npos) {
         return true;
@@ -348,7 +355,7 @@ static bool wait_for_installation(int read_fd, std::string* error) {
             return false;
         }
     }
-    if (bytes_read == kMaxMessageSize) {
+    if (child_stdout.length() == kMaxMessageSize) {
         *error = std::format("Output too long: {}", child_stdout);
         return false;
     }
@@ -366,10 +373,8 @@ static std::optional<Process> start_inc_server_and_stream_signed_files(
         return {};
     }
     auto [pipe_read_fd, pipe_write_fd] = print_fds;
-    auto fd_cleaner = android::base::make_scope_guard([&] {
-        adb_close(pipe_read_fd);
-        adb_close(pipe_write_fd);
-    });
+    auto read_fd_cleaner = android::base::make_scope_guard([&] { adb_close(pipe_read_fd); });
+    auto write_fd_cleaner = android::base::make_scope_guard([&] { adb_close(pipe_write_fd); });
     close_on_exec(pipe_read_fd);
 
     // We spawn an incremental server that will be up until all blocks have been fed to the
@@ -396,6 +401,9 @@ static std::optional<Process> start_inc_server_and_stream_signed_files(
         *error = "adb: failed to fork";
         return {};
     }
+    // Close the write FD, so that reads on the read FD returns as soon as the child process exits.
+    adb_close(pipe_write_fd);
+    write_fd_cleaner.Disable();
     auto server_killer = android::base::make_scope_guard([&] { child.kill(); });
 
     // Block until the Package Manager has received enough blocks to declare the installation
