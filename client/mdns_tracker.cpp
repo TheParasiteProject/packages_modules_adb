@@ -83,7 +83,7 @@ static std::string list_mdns_services() {
 }
 
 static void mdns_tracker_close(asocket* socket) {
-    fdevent_check_looper();
+    CHECK_LOOPER_THREAD();
     auto* tracker = reinterpret_cast<MdnsTracker*>(socket);
     asocket* peer = socket->peer;
 
@@ -97,14 +97,14 @@ static void mdns_tracker_close(asocket* socket) {
 }
 
 static int device_tracker_enqueue(asocket* socket, apacket::payload_type) {
-    fdevent_check_looper();
+    CHECK_LOOPER_THREAD();
     /* you can't read from a device tracker, close immediately */
     mdns_tracker_close(socket);
     return -1;
 }
 
 static int mdns_tracker_send(const MdnsTracker* tracker, const std::string& string) {
-    fdevent_check_looper();
+    CHECK_LOOPER_THREAD();
     asocket* peer = tracker->socket_.peer;
 
     apacket::payload_type data;
@@ -117,7 +117,7 @@ static int mdns_tracker_send(const MdnsTracker* tracker, const std::string& stri
 }
 
 static void mdns_tracker_ready(asocket* socket) {
-    fdevent_check_looper();
+    CHECK_LOOPER_THREAD();
     auto* tracker = reinterpret_cast<MdnsTracker*>(socket);
 
     // We want to send the service list when the tracker connects
@@ -129,7 +129,7 @@ static void mdns_tracker_ready(asocket* socket) {
 }
 
 asocket* create_mdns_tracker() {
-    fdevent_check_looper();
+    CHECK_LOOPER_THREAD();
     auto* tracker = new MdnsTracker();
     VLOG(MDNS) << "mdns tracker created";
 
