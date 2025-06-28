@@ -74,13 +74,13 @@ static std::unordered_map<int, atransport*> emulator_transports
         [[clang::no_destroy]] GUARDED_BY(emulator_transports_lock);
 
 bool connect_emulator(int port) {
-    fdevent_check_not_looper();
+    CHECK_NOT_LOOPER_THREAD();
     std::string dummy;
     return connect_emulator_arbitrary_ports(port - 1, port, &dummy) == 0;
 }
 
 void connect_device(const std::string& address, std::string* response) {
-    fdevent_check_not_looper();
+    CHECK_NOT_LOOPER_THREAD();
     if (address.empty()) {
         *response = "empty address";
         return;

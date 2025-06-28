@@ -161,12 +161,12 @@ class ReconnectHandler {
 };
 
 void ReconnectHandler::Start() {
-    fdevent_check_looper();
+    CHECK_LOOPER_THREAD();
     handler_thread_ = std::thread(&ReconnectHandler::Run, this);
 }
 
 void ReconnectHandler::Stop() {
-    fdevent_check_looper();
+    CHECK_LOOPER_THREAD();
     {
         std::lock_guard<std::mutex> lock(reconnect_mutex_);
         running_ = false;
@@ -184,7 +184,7 @@ void ReconnectHandler::Stop() {
 }
 
 void ReconnectHandler::TrackTransport(atransport* transport) {
-    fdevent_check_looper();
+    CHECK_LOOPER_THREAD();
     {
         std::lock_guard<std::mutex> lock(reconnect_mutex_);
         if (!running_) return;
@@ -841,7 +841,7 @@ static void remove_transport(atransport* transport) {
 }
 
 static void transport_destroy(atransport* t) {
-    fdevent_check_looper();
+    CHECK_LOOPER_THREAD();
     CHECK(t != nullptr);
 
     std::lock_guard<std::recursive_mutex> lock(transport_lock);
@@ -1079,7 +1079,7 @@ ConnectionState atransport::GetConnectionState() const {
 }
 
 void atransport::SetConnectionState(ConnectionState state) {
-    fdevent_check_looper();
+    CHECK_LOOPER_THREAD();
     connection_state_ = state;
     update_transports();
 }
@@ -1087,7 +1087,7 @@ void atransport::SetConnectionState(ConnectionState state) {
 #if ADB_HOST
 bool atransport::Attach(std::string* error) {
     D("%s: attach", serial.c_str());
-    fdevent_check_looper();
+    CHECK_LOOPER_THREAD();
 
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -1117,7 +1117,7 @@ bool atransport::Attach(std::string* error) {
 
 bool atransport::Detach(std::string* error) {
     D("%s: detach", serial.c_str());
-    fdevent_check_looper();
+    CHECK_LOOPER_THREAD();
 
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -1512,7 +1512,7 @@ bool register_socket_transport(unique_fd s, std::string serial, int port, bool i
 #if ADB_HOST
     // Below in this method, we block up to 10s on the waitable. This should never run on the
     // fdevent thread.
-    fdevent_check_not_looper();
+    CHECK_NOT_LOOPER_THREAD();
 #endif
 
     atransport* t = new atransport(kTransportLocal, std::move(reconnect), kCsOffline);
@@ -1651,7 +1651,7 @@ void unregister_usb_transport(usb_handle* usb) {
 //   - adb reverse --remove tcp:<device_port> : responds OKAY
 //   - adb reverse --remove-all : responds OKAY
 void atransport::UpdateReverseConfig(std::string_view service_addr) {
-    fdevent_check_looper();
+    CHECK_LOOPER_THREAD();
     if (!android::base::ConsumePrefix(&service_addr, "reverse:")) {
         return;
     }
@@ -1691,7 +1691,7 @@ void atransport::UpdateReverseConfig(std::string_view service_addr) {
 
 // Is this an authorized :connect request?
 bool atransport::IsReverseConfigured(const std::string& local_addr) {
-    fdevent_check_looper();
+    CHECK_LOOPER_THREAD();
     for (const auto& [remote, local] : reverse_forwards_) {
         if (local == local_addr) {
             return true;

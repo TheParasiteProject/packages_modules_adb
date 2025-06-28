@@ -219,7 +219,7 @@ static auto& g_ambient_fdevent_context() {
     return context;
 }
 
-static fdevent_context* fdevent_get_ambient() {
+fdevent_context* fdevent_get_ambient() {
     return g_ambient_fdevent_context();
 }
 
@@ -263,14 +263,6 @@ void fdevent_run_on_looper(std::function<void()> fn) {
 
 void fdevent_loop() {
     fdevent_get_ambient()->Loop();
-}
-
-void fdevent_check_looper() {
-    fdevent_get_ambient()->CheckLooperThread();
-}
-
-void fdevent_check_not_looper() {
-    fdevent_get_ambient()->CheckNotLooperThread();
 }
 
 void fdevent_terminate_loop() {
