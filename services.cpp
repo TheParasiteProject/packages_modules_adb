@@ -142,6 +142,8 @@ void connect_emulator(const std::string& port_spec, std::string* response) {
 }
 
 static void connect_service(unique_fd fd, std::string host) {
+    CHECK_NOT_LOOPER_THREAD();
+
     std::string response;
     if (!strncmp(host.c_str(), "emu:", 4)) {
         connect_emulator(host.c_str() + 4, &response);
