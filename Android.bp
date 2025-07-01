@@ -91,10 +91,11 @@ cc_defaults {
             ],
 
             host_ldlibs: [
-                "-lws2_32",
+                "-ldbghelp",
                 "-lgdi32",
-                "-luserenv",
                 "-liphlpapi",
+                "-luserenv",
+                "-lws2_32",
             ],
         },
     },
