@@ -24,10 +24,14 @@
 #include <endian.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <chrono>
+#include <map>
 #include <mutex>
 #include <random>
+#include <string>
 #include <thread>
+#include <vector>
 
 #include <android-base/logging.h>
 #include <android-base/properties.h>
