@@ -49,7 +49,7 @@ static std::string list_mdns_services() {
             s = pair->mutable_service();
         } else if (service.service == ADB_FULL_MDNS_SERVICE_TYPE(ADB_MDNS_TLS_CONNECT_TYPE)) {
             auto* tls = services.add_tls();
-            tls->set_known_device(adb_wifi_is_known_host(service.instance));
+            tls->set_known_device(known_wifi_hosts_file.IsKnownHost(service.instance));
             s = tls->mutable_service();
         } else {
             LOG(WARNING) << "Unknown service type: " << service;
