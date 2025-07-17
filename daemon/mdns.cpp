@@ -41,11 +41,12 @@
 
 using namespace std::chrono_literals;
 
-// TODO(b/421363980): Remove mdns_lock and mdns_registered, since we are mono-threaded.
-static std::mutex& mdns_lock = *new std::mutex();
+// All mdns operations MUST happen on the mDNS thread. This TU is mono-threaded.
+// This is done so operations requested by Frameworks are executed in the order
+// they were issued. As a result, there are no mutex to protect the datastructures.
 
-static DNSServiceRef mdns_refs[kNumADBDNSServices] GUARDED_BY(mdns_lock);
-static bool mdns_registered[kNumADBDNSServices] GUARDED_BY(mdns_lock);
+// Bonjour handles for registered services.
+static DNSServiceRef mdns_refs[kNumADBDNSServices];
 
 static std::string RandomAlphaNumString(size_t len) {
     std::string ret;
@@ -128,7 +129,10 @@ static std::vector<char> buildTxtRecord() {
 }
 
 static void register_mdns_service(int index, int port, const std::string& service_name) {
-    std::lock_guard<std::mutex> lock(mdns_lock);
+    if (mdns_refs[index] != nullptr) {
+        LOG(ERROR) << "Unable to register mDNS service " << service_name << " (slot occupied)";
+        return;
+    }
 
     auto txtRecord = buildTxtRecord();
     auto error = DNSServiceRegister(
@@ -139,20 +143,19 @@ static void register_mdns_service(int index, int port, const std::string& servic
     if (error != kDNSServiceErr_NoError) {
         LOG(ERROR) << "Could not register mDNS service " << kADBDNSServices[index] << ", error ("
                    << error << ").";
-        mdns_registered[index] = false;
     } else {
-        mdns_registered[index] = true;
+        VLOG(MDNS) << "adbd mDNS service " << kADBDNSServices[index] << " registered";
     }
-    VLOG(MDNS) << "adbd mDNS service " << kADBDNSServices[index]
-               << " registered: " << mdns_registered[index];
 }
 
 static void unregister_mdns_service(int index) {
-    std::lock_guard<std::mutex> lock(mdns_lock);
-
-    if (mdns_registered[index]) {
-        DNSServiceRefDeallocate(mdns_refs[index]);
+    VLOG(MDNS) << "Unregistering TLS service";
+    if (mdns_refs[index] == nullptr) {
+        return;
     }
+
+    DNSServiceRefDeallocate(mdns_refs[index]);
+    mdns_refs[index] = nullptr;
 }
 
 /**
@@ -262,10 +265,4 @@ void unregister_adb_tls_service() {
         VLOG(MDNS) << "Unregistering tls service";
         unregister_mdns_service(kADBSecureConnectServiceRefIndex);
     });
-}
-
-// TODO(b/421363980): Remove function, since we are mono-threaded.
-bool is_adb_tls_service_registered() {
-    std::lock_guard<std::mutex> lock(mdns_lock);
-    return mdns_registered[kADBSecureConnectServiceRefIndex];
 }

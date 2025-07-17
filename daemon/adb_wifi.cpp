@@ -201,9 +201,9 @@ void disable_wifi_debugging() {
         delete sTlsServer;
         sTlsServer = nullptr;
     }
-    if (is_adb_tls_service_registered()) {
-        unregister_adb_tls_service();
-    }
+
+    unregister_adb_tls_service();
+
     kick_all_tcp_tls_transports();
     LOG(INFO) << "adb wifi stopped";
     adbd_send_tls_server_port(0);
