@@ -38,3 +38,14 @@ TEST_F(AdbWifiKnownHostsTest, addKnownHost) {
     known_hosts_.AddKnownHost(host);
     ASSERT_TRUE(known_hosts_.IsKnownHost(host));
 }
+
+TEST_F(AdbWifiKnownHostsTest, allowDuplicates) {
+    std::string host = "adb-14141FDF600081-TnSdi9";
+    ASSERT_FALSE(known_hosts_.IsKnownHost(host));
+
+    known_hosts_.AddKnownHost(host);
+    ASSERT_TRUE(known_hosts_.IsKnownHost(host));
+
+    // Make sure a duplicate is still detected as a known host.
+    ASSERT_TRUE(known_hosts_.IsKnownHost(host + " (1)"));
+}

@@ -161,7 +161,13 @@ KnownWifiHostsFile::KnownWifiHostsFile()
 bool KnownWifiHostsFile::IsKnownHost(const std::string& host) {
     auto known_hosts = Load();
     for (const auto& host_info : known_hosts.host_infos()) {
-        if (host == host_info.guid()) {
+        // Android devices have a bug where they can register a service instance before
+        // unregistering the previous one. This leads to mdns duplicates. We can mitigate this issue
+        // by detecting them (a duplicate is automatically created by the mDNS stack with a suffix
+        // " (X)" where X is an integer to dedup). Testing for start_with instead of == does the
+        // trick. This workaround can be deleted once b/432299214 and b/421363980 fixes have been
+        // out for a few years.
+        if (host.starts_with(host_info.guid())) {
             return true;
         }
     }
