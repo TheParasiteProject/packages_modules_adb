@@ -27,6 +27,7 @@
 #include <openssl/ssl.h>
 
 using android::base::borrowed_fd;
+using namespace std::string_literals;
 
 namespace adb {
 namespace tls {
@@ -61,6 +62,7 @@ class TlsConnectionImpl : public TlsConnection {
 
     static bssl::UniquePtr<X509> X509FromBuffer(bssl::UniquePtr<CRYPTO_BUFFER> buffer);
     static const char* SSLErrorString();
+    static std::string SSL_IO_Error(int error);
     void Invalidate();
     TlsError GetFailureReason(int err);
     const char* RoleToString() { return role_ == Role::Server ? kServerRoleStr : kClientRoleStr; }
@@ -317,6 +319,62 @@ std::vector<uint8_t> TlsConnectionImpl::ReadFully(size_t size) {
     return buf;
 }
 
+std::string TlsConnectionImpl::SSL_IO_Error(int error) {
+    switch (error) {
+        case SSL_ERROR_NONE: {
+            return "SSL_ERROR_NONE: nothing read but not an error?";
+        }
+        case SSL_ERROR_SSL: {
+            return "SSL_ERROR_SSL: '"s + SSLErrorString() + "'";
+        }
+        case SSL_ERROR_WANT_READ: {
+            return "SSL_ERROR_WANT_READ";
+        }
+        case SSL_ERROR_WANT_WRITE: {
+            return "SSL_ERROR_WANT_WRITE";
+        }
+        case SSL_ERROR_WANT_X509_LOOKUP: {
+            return "SSL_ERROR_WANT_X509_LOOKUP";
+        }
+        case SSL_ERROR_SYSCALL: {
+            return "SSL_ERROR_SYSCALL: '"s + strerror(errno) + "'";
+        }
+        case SSL_ERROR_ZERO_RETURN: {
+            return "SSL_ERROR_ZERO_RETURN";
+        }
+        case SSL_ERROR_WANT_CONNECT: {
+            return "SSL_ERROR_WANT_CONNECT";
+        }
+        case SSL_ERROR_WANT_ACCEPT: {
+            return "SSL_ERROR_WANT_ACCEPT";
+        }
+        case SSL_ERROR_WANT_CHANNEL_ID_LOOKUP: {
+            return "SSL_ERROR_WANT_CHANNEL_ID_LOOKUP";
+        }
+        case SSL_ERROR_PENDING_SESSION: {
+            return "SSL_ERROR_PENDING_SESSION";
+        }
+        case SSL_ERROR_PENDING_CERTIFICATE: {
+            return "SSL_ERROR_PENDING_CERTIFICATE";
+        }
+        case SSL_ERROR_WANT_PRIVATE_KEY_OPERATION: {
+            return "SSL_ERROR_WANT_PRIVATE_KEY_OPERATION";
+        }
+        case SSL_ERROR_PENDING_TICKET: {
+            return "SSL_ERROR_PENDING_TICKET";
+        }
+        case SSL_ERROR_EARLY_DATA_REJECTED: {
+            return "SSL_ERROR_EARLY_DATA_REJECTED";
+        }
+        case SSL_ERROR_WANT_CERTIFICATE_VERIFY: {
+            return "SSL_ERROR_WANT_CERTIFICATE_VERIFY";
+        }
+        default: {
+            return "Unknown case: "s + std::to_string(error);
+        }
+    }
+}
+
 bool TlsConnectionImpl::ReadFully(void* buf, size_t size) {
     CHECK_GT(size, 0U);
     if (!ssl_) {
@@ -330,7 +388,10 @@ bool TlsConnectionImpl::ReadFully(void* buf, size_t size) {
         int bytes_read =
                 SSL_read(ssl_.get(), p8 + offset, std::min(static_cast<size_t>(INT_MAX), size));
         if (bytes_read <= 0) {
-            LOG(ERROR) << RoleToString() << "SSL_read failed [" << SSLErrorString() << "]";
+            int error = SSL_get_error(ssl_.get(), bytes_read);
+            LOG(ERROR) << RoleToString() << "SSL_read failed [bytes_read=" << bytes_read
+                       << ", io_error=" << SSL_IO_Error(error) << "]";
+
             return false;
         }
         size -= bytes_read;
@@ -350,7 +411,9 @@ bool TlsConnectionImpl::WriteFully(std::string_view data) {
         int bytes_out = SSL_write(ssl_.get(), data.data(),
                                   std::min(static_cast<size_t>(INT_MAX), data.size()));
         if (bytes_out <= 0) {
-            LOG(ERROR) << RoleToString() << "SSL_write failed [" << SSLErrorString() << "]";
+            int error = SSL_get_error(ssl_.get(), bytes_out);
+            LOG(ERROR) << RoleToString() << "SSL_write failed [bytes_out=" << bytes_out
+                       << ", io_error=" << SSL_IO_Error(error) << "]";
             return false;
         }
         data = data.substr(bytes_out);
