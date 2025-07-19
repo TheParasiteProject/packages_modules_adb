@@ -117,7 +117,7 @@ void AttemptAutoConnect(const std::reference_wrapper<const ServiceInfo> info) {
 
     // Don't try to auto-connect if not in the keystore.
     if (*index == kADBSecureConnectServiceRefIndex &&
-        !adb_wifi_is_known_host(info.get().instance)) {
+        !known_wifi_hosts_file.IsKnownHost(info.get().instance)) {
         VLOG(MDNS) << "instance_name=" << info.get().instance << " not in keystore";
         return;
     }
@@ -218,7 +218,7 @@ void StartDiscovery() {
 }
 
 bool ConnectAdbSecureDevice(const ServiceInfo& info) {
-    if (!adb_wifi_is_known_host(info.instance)) {
+    if (!known_wifi_hosts_file.IsKnownHost(info.instance)) {
         VLOG(MDNS) << "serviceName=" << info.instance << " not in keystore";
         return false;
     }

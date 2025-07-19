@@ -1371,7 +1371,7 @@ HostRequestResult handle_host_request(std::string_view service, TransportType ty
         status.set_trace_level(get_trace_setting());
         status.set_mdns_enabled(mdns::is_enabled());
         status.set_keystore_path(adb_auth_get_userkey_path());
-        status.set_known_hosts_path(get_user_known_hosts_path());
+        status.set_known_hosts_path(known_wifi_hosts_file.KeyStorePath());
 
         std::string server_status_string;
         status.SerializeToString(&server_status_string);
