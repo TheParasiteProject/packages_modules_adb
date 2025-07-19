@@ -186,12 +186,6 @@ void fdevent_context::CheckLooperThread() const {
     }
 }
 
-void fdevent_context::CheckNotLooperThread() const {
-    if (looper_thread_id_) {
-        CHECK_NE(*looper_thread_id_, android::base::GetThreadId());
-    }
-}
-
 void fdevent_context::Run(std::function<void()> fn) {
     {
         std::lock_guard<std::mutex> lock(run_queue_mutex_);
