@@ -187,7 +187,7 @@ static void drop_privileges() {
 
 static void setup_adb(const std::vector<std::string>& addrs) {
 #if defined(__ANDROID__)
-    // Get the first valid port from addrs and setup mDNS.
+    // Get the first valid port from addrs and register it with mDNS.
     int port = -1;
     std::string error;
     for (const auto& addr : addrs) {
@@ -199,8 +199,10 @@ static void setup_adb(const std::vector<std::string>& addrs) {
     if (port == -1) {
         port = DEFAULT_ADB_LOCAL_TRANSPORT_PORT;
     }
-    LOG(INFO) << "Setup mdns on port= " << port;
-    setup_mdns(port);
+    // TODO: We should advertise every TCP socket, not just the first one.
+    //  Move this in server_socket_thread and make sure we only call it if the socket is "tcp:" (vs
+    //  "vsock:").
+    register_adb_tcp_service(port);
 #endif
     for (const auto& addr : addrs) {
         LOG(INFO) << "adbd listening on " << addr;
