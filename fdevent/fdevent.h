@@ -110,14 +110,6 @@ struct fdevent_context {
     // terminate_loop_ to determine whether to stop.
     virtual void Loop() = 0;
 
-    // Assert that the caller is executing in the context of the execution
-    // thread that invoked Loop().
-    void CheckLooperThread() const;
-
-    // Assert that the caller is NOT executing in the context of the execution
-    // thread that invoked Loop().
-    void CheckNotLooperThread() const;
-
     // Queue an operation to be run on the looper thread.
     void Run(std::function<void()> fn);
 
@@ -130,6 +122,10 @@ struct fdevent_context {
   protected:
     // Interrupt the run loop.
     virtual void Interrupt() = 0;
+
+    // Assert that the caller is executing in the context of the execution
+    // thread that invoked Loop().
+    void CheckLooperThread() const;
 
     std::atomic<bool> terminate_loop_ = false;
 
@@ -167,10 +163,15 @@ void fdevent_reset();
 fdevent_context* fdevent_get_ambient();
 
 // We use macro so _FILE_ and _FUNCTION_ get the proper value if the check fails.
+
+// Assert that the caller is executing in the context of the execution
+// thread that invoked Loop().
 #define CHECK_LOOPER_THREAD()                     \
     if (fdevent_get_ambient()->looper_thread_id_) \
     CHECK_EQ(*fdevent_get_ambient()->looper_thread_id_, android::base::GetThreadId())
 
+// Assert that the caller is NOT executing in the context of the execution
+// thread that invoked Loop().
 #define CHECK_NOT_LOOPER_THREAD()                 \
     if (fdevent_get_ambient()->looper_thread_id_) \
     CHECK_NE(*fdevent_get_ambient()->looper_thread_id_, android::base::GetThreadId())
