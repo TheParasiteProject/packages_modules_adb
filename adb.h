@@ -202,8 +202,7 @@ extern const char* adb_device_banner;
 
 #define CHUNK_SIZE (64 * 1024)
 
-// Argument delimeter for adb abb command.
-#define ABB_ARG_DELIMETER ('\0')
+#define ABB_ARG_DELIMITER ('\0')
 
 #if !ADB_HOST
 #define USB_FFS_ADB_PATH "/dev/usb-ffs/adb/"
