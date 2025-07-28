@@ -520,7 +520,7 @@ void connect_device(const std::string& address, std::string* response);
 #endif
 
 /* initialize a transport object's func pointers and state */
-int init_socket_transport(atransport* t, unique_fd s, int port, bool is_emulator);
+int init_socket_transport(atransport* t, unique_fd fd, int port, bool is_emulator);
 
 /* cause new transports to be init'd and added to the list */
 bool register_socket_transport(unique_fd s, std::string serial, int port, bool is_emulator,

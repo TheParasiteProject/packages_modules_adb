@@ -79,6 +79,11 @@ bool connect_emulator(int port) {
     return connect_emulator_arbitrary_ports(port - 1, port, &dummy) == 0;
 }
 
+void init_socket_transport_tcp(atransport* t, unique_fd fd) {
+    auto fd_connection = std::make_unique<FdConnection>(std::move(fd));
+    t->SetConnection(std::make_unique<BlockingConnectionAdapter>(std::move(fd_connection)));
+}
+
 void connect_device(const std::string& address, std::string* response) {
     CHECK_NOT_LOOPER_THREAD();
     if (address.empty()) {
@@ -116,8 +121,8 @@ void connect_device(const std::string& address, std::string* response) {
         // invoked if the atransport* has already been setup. This eventually
         // calls atransport->SetConnection() with a newly created Connection*
         // that will in turn send the CNXN packet.
-        return init_socket_transport(t, std::move(fd), port, false) >= 0 ? ReconnectResult::Success
-                                                                         : ReconnectResult::Retry;
+        init_socket_transport_tcp(t, std::move(fd));
+        return ReconnectResult::Success;
     };
 
     int error;
@@ -284,28 +289,25 @@ std::string getEmulatorSerialString(int console_port) {
     return android::base::StringPrintf("emulator-%d", console_port);
 }
 
-int init_socket_transport(atransport* t, unique_fd fd, int adb_port, bool is_emulator) {
-    int fail = 0;
-
-    if (is_emulator) {
-        auto emulator_connection = std::make_unique<EmulatorConnection>(std::move(fd), adb_port);
-        t->SetConnection(
-                std::make_unique<BlockingConnectionAdapter>(std::move(emulator_connection)));
-        std::lock_guard<std::mutex> lock(emulator_transports_lock);
-        atransport* existing_transport = find_emulator_transport_by_adb_port_locked(adb_port);
-        if (existing_transport != nullptr) {
-            D("is_emulator transport for port %d already registered (%p)?", adb_port,
-              existing_transport);
-            fail = -1;
-        } else {
-            emulator_transports[adb_port] = t;
-        }
-
-        return fail;
+int init_socket_transport_emulator(atransport* t, unique_fd fd, int adb_port) {
+    auto emulator_connection = std::make_unique<EmulatorConnection>(std::move(fd), adb_port);
+    t->SetConnection(std::make_unique<BlockingConnectionAdapter>(std::move(emulator_connection)));
+    std::lock_guard<std::mutex> lock(emulator_transports_lock);
+    atransport* existing_transport = find_emulator_transport_by_adb_port_locked(adb_port);
+    if (existing_transport != nullptr) {
+        D("is_emulator transport for port %d already registered (%p)?", adb_port,
+          existing_transport);
+        return -1;
     }
+    emulator_transports[adb_port] = t;
 
-    // Regular tcp connection.
-    auto fd_connection = std::make_unique<FdConnection>(std::move(fd));
-    t->SetConnection(std::make_unique<BlockingConnectionAdapter>(std::move(fd_connection)));
-    return fail;
+    return 0;
+}
+
+int init_socket_transport(atransport* t, unique_fd fd, int adb_port, bool is_emulator) {
+    if (is_emulator) {
+        return init_socket_transport_emulator(t, std::move(fd), adb_port);
+    }
+    init_socket_transport_tcp(t, std::move(fd));
+    return 0;
 }
