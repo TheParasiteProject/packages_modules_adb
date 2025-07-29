@@ -8,7 +8,7 @@ relies on:
 1. `adbd` issues an `AUTH` challenge to the workstation.
 2. The workstation answers the `AUTH` challenge using its private RSA key.
 3. `adbd` searches for the key in its list of "trusted devices" public RSA keys.
-4. If found, the workstation is authenticated and the device goes into [kCsHost](https://source.corp.google.com/h/googleplex-android/platform/superproject/main/+/main:packages/modules/adb/adb.h;l=119;drc=f748699df1efef36a3fe82c9d2c72f19d547cc7b) state. 
+4. If found, the workstation is authenticated and the device goes into [kCsHost](https://source.corp.google.com/h/googleplex-android/platform/superproject/main/+/main:packages/modules/adb/adb.h;l=119;drc=f748699df1efef36a3fe82c9d2c72f19d547cc7b) state.
 Otherwise, it goes in [kCsUnauthorized](https://source.corp.google.com/h/googleplex-android/platform/superproject/main/+/main:packages/modules/adb/adb.h;l=110;drc=f748699df1efef36a3fe82c9d2c72f19d547cc7b) state.
 
 `adbd`'s source of truth for public RSA keys is contained in two files.
@@ -23,7 +23,7 @@ by the library `adbd_auth`.
 
 
 `/adb_keys` (a.k.a "adb_keys", a.k.a "system keys") is immutable and stored on read-only partitions. It ships with the device and contains
-the vendor's public key. On Android OS `user` builds, this file is often empty.
+the vendor's public key. It is only present on `eng` and `user-debug` builds. On `user` builds, this file should not exist (as per [CTS test](https://source.corp.google.com/h/googleplex-android/platform/superproject/main/+/main:cts/tests/tests/os/src/android/os/cts/UsbDebuggingTest.java;l=40;drc=b748a8705746f423bcac28fd0c9a7994c67fbddd)).
 
 `/data/misc/adb/adb_keys` (a.k.a "adb_user_keys") is read by `adbd` but can be modified by Framework. It is stored on a `rw` partition.
 
