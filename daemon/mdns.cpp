@@ -26,8 +26,10 @@
 
 #include <algorithm>
 #include <chrono>
+#include <condition_variable>
 #include <map>
 #include <mutex>
+#include <queue>
 #include <random>
 #include <string>
 #include <thread>
@@ -39,26 +41,55 @@
 
 using namespace std::chrono_literals;
 
+// TODO(b/421363980): Remove mdns_lock and mdns_registered, since we are mono-threaded.
 static std::mutex& mdns_lock = *new std::mutex();
-
-// TCP socket port ADBd is listening for incoming connections
-static int tcp_port;
 
 static DNSServiceRef mdns_refs[kNumADBDNSServices] GUARDED_BY(mdns_lock);
 static bool mdns_registered[kNumADBDNSServices] GUARDED_BY(mdns_lock);
 
-void start_mdnsd() {
-#if defined(__ANDROID__)
-    if (android::base::GetProperty("init.svc.mdnsd", "") == "running") {
-        return;
+static std::string RandomAlphaNumString(size_t len) {
+    std::string ret;
+    std::random_device rd;
+    std::mt19937 mt(rd());
+    // Generate values starting with zero and then up to enough to cover numeric
+    // digits, small letters and capital letters (26 each).
+    std::uniform_int_distribution<uint8_t> dist(0, 61);
+    for (size_t i = 0; i < len; ++i) {
+        uint8_t val = dist(mt);
+        if (val < 10) {
+            ret += static_cast<char>('0' + val);
+        } else if (val < 36) {
+            ret += static_cast<char>('A' + (val - 10));
+        } else {
+            ret += static_cast<char>('a' + (val - 36));
+        }
     }
+    return ret;
+}
 
-    android::base::SetProperty("ctl.start", "mdnsd");
+static std::string GenerateDeviceGuid() {
+    // The format is adb-<serial_no>-<six-random-alphanum>
+    std::string guid = "adb-";
 
-    if (! android::base::WaitForProperty("init.svc.mdnsd", "running", 5s)) {
-        LOG(ERROR) << "Could not start mdnsd.";
+    std::string serial = android::base::GetProperty("ro.serialno", "");
+    if (serial.empty()) {
+        // Generate 16-bytes of random alphanum string
+        serial = RandomAlphaNumString(16);
     }
-#endif
+    guid += serial + '-';
+    // Random six-char suffix
+    guid += RandomAlphaNumString(6);
+    return guid;
+}
+
+static std::string ReadDeviceGuid() {
+    std::string guid = android::base::GetProperty("persist.adb.wifi.guid", "");
+    if (guid.empty()) {
+        guid = GenerateDeviceGuid();
+        CHECK(!guid.empty());
+        android::base::SetProperty("persist.adb.wifi.guid", guid);
+    }
+    return guid;
 }
 
 static void mdns_callback(DNSServiceRef /*ref*/,
@@ -69,8 +100,7 @@ static void mdns_callback(DNSServiceRef /*ref*/,
                           const char* /*domain*/,
                           void* /*context*/) {
     if (errorCode != kDNSServiceErr_NoError) {
-        LOG(ERROR) << "Encountered mDNS registration error ("
-            << errorCode << ").";
+        LOG(ERROR) << "Encountered mDNS registration error (" << errorCode << ").";
     }
 }
 
@@ -125,102 +155,117 @@ static void unregister_mdns_service(int index) {
     }
 }
 
-static void register_base_mdns_transport() {
-    std::string hostname = "adb-";
-    hostname += android::base::GetProperty("ro.serialno", "unidentified");
-    register_mdns_service(kADBTransportServiceRefIndex, tcp_port, hostname);
-}
-
-static void setup_mdns_thread() {
-    start_mdnsd();
-
-    // We will now only set up the normal transport mDNS service
-    // instead of registering all the adb secure mDNS services
-    // in the beginning. This is to provide more privacy/security.
-    register_base_mdns_transport();
-}
-
-// This also tears down any adb secure mDNS services, if they exist.
-static void teardown_mdns() {
-    for (int i = 0; i < kNumADBDNSServices; ++i) {
-        unregister_mdns_service(i);
+/**
+ * All mdns operations happen on the same mdns thread.
+ * This includes starting mdnsd, registering a service, and unregistering a service.
+ * Tasks are pushed onto a FIFO and consumed by the mdns worker thread.
+ */
+class MdnsWorkerThread {
+  public:
+    static MdnsWorkerThread& Get() {
+        static MdnsWorkerThread* worker = new MdnsWorkerThread();
+        return *worker;
     }
-}
 
-static std::string RandomAlphaNumString(size_t len) {
-    std::string ret;
-    std::random_device rd;
-    std::mt19937 mt(rd());
-    // Generate values starting with zero and then up to enough to cover numeric
-    // digits, small letters and capital letters (26 each).
-    std::uniform_int_distribution<uint8_t> dist(0, 61);
-    for (size_t i = 0; i < len; ++i) {
-        uint8_t val = dist(mt);
-        if (val < 10) {
-            ret += static_cast<char>('0' + val);
-        } else if (val < 36) {
-            ret += static_cast<char>('A' + (val - 10));
-        } else {
-            ret += static_cast<char>('a' + (val - 36));
+    void AddTask(std::function<void()> task) {
+        std::lock_guard<std::mutex> lock(worker_lock);
+        tasks.push(std::move(task));
+        cv.notify_one();
+    }
+
+  private:
+    MdnsWorkerThread() {
+        std::thread(&MdnsWorkerThread::Run, this).detach();
+
+        // TODO Check if this is needed.
+        //  If the process exists, all its fds will be closed, mdnsd will detect it and unregister
+        //  the services.
+        atexit(Teardown);
+    }
+
+    // This also tears down any adb secure mDNS services, if they exist.
+    static void Teardown() {
+        VLOG(MDNS) << "Tearing down mdns";
+        MdnsWorkerThread::Get().AddTask([] {
+            VLOG(MDNS) << "Unregistering tcp mDNS service";
+            unregister_mdns_service(kADBTransportServiceRefIndex);
+        });
+        MdnsWorkerThread::Get().AddTask([] {
+            VLOG(MDNS) << "Unregistering tls mDNS service";
+            unregister_mdns_service(kADBSecureConnectServiceRefIndex);
+        });
+    }
+
+    void EnsureMdnsdStarted() {
+#if defined(__ANDROID__)
+        if (android::base::GetProperty("init.svc.mdnsd", "") == "running") {
+            return;
+        }
+
+        android::base::SetProperty("ctl.start", "mdnsd");
+
+        if (!android::base::WaitForProperty("init.svc.mdnsd", "running", 5s)) {
+            LOG(ERROR) << "Could not start mdnsd.";
+        }
+#endif
+    }
+
+    void Run() {
+        // Make sure the adb wifi guid is generated.
+        std::string guid = ReadDeviceGuid();
+        CHECK(!guid.empty());
+
+        while (true) {
+            std::function<void()> task;
+            {
+                std::unique_lock<std::mutex> lock(worker_lock);
+                android::base::ScopedLockAssertion assume_locked(worker_lock);
+                cv.wait(lock, [this]() REQUIRES(worker_lock) { return !tasks.empty(); });
+                task = tasks.front();
+                tasks.pop();
+            }
+
+            EnsureMdnsdStarted();
+            task();
         }
     }
-    return ret;
-}
 
-static std::string GenerateDeviceGuid() {
-    // The format is adb-<serial_no>-<six-random-alphanum>
-    std::string guid = "adb-";
-
-    std::string serial = android::base::GetProperty("ro.serialno", "");
-    if (serial.empty()) {
-        // Generate 16-bytes of random alphanum string
-        serial = RandomAlphaNumString(16);
-    }
-    guid += serial + '-';
-    // Random six-char suffix
-    guid += RandomAlphaNumString(6);
-    return guid;
-}
-
-static std::string ReadDeviceGuid() {
-    std::string guid = android::base::GetProperty("persist.adb.wifi.guid", "");
-    if (guid.empty()) {
-        guid = GenerateDeviceGuid();
-        CHECK(!guid.empty());
-        android::base::SetProperty("persist.adb.wifi.guid", guid);
-    }
-    return guid;
-}
+    std::mutex worker_lock;
+    std::condition_variable cv GUARDED_BY(worker_lock);
+    std::queue<std::function<void()>> tasks GUARDED_BY(worker_lock);
+};
 
 // Public interface/////////////////////////////////////////////////////////////
 
-void setup_mdns(int tcp_port_in) {
-    // Make sure the adb wifi guid is generated.
-    std::string guid = ReadDeviceGuid();
-    CHECK(!guid.empty());
-    tcp_port = tcp_port_in;
-    std::thread(setup_mdns_thread).detach();
-
-    // TODO: Make this more robust against a hard kill.
-    atexit(teardown_mdns);
+void register_adb_tcp_service(int tcp_port) {
+    MdnsWorkerThread::Get().AddTask([tcp_port] {
+        std::string hostname = "adb-";
+        hostname += android::base::GetProperty("ro.serialno", "unidentified");
+        VLOG(MDNS) << "Registering tcp service on port: " << tcp_port;
+        register_mdns_service(kADBTransportServiceRefIndex, tcp_port, hostname);
+    });
 }
 
-void register_adb_secure_connect_service(int tls_port) {
-    std::thread([tls_port]() {
+void register_adb_tls_service(int tls_port) {
+    MdnsWorkerThread::Get().AddTask([tls_port] {
         auto service_name = ReadDeviceGuid();
         if (service_name.empty()) {
             return;
         }
-        VLOG(MDNS) << "Registering secure_connect service (" << service_name << ")";
+        VLOG(MDNS) << "Registering tls service (" << service_name << ") on port: " << tls_port;
         register_mdns_service(kADBSecureConnectServiceRefIndex, tls_port, service_name);
-    }).detach();
+    });
 }
 
-void unregister_adb_secure_connect_service() {
-    std::thread([]() { unregister_mdns_service(kADBSecureConnectServiceRefIndex); }).detach();
+void unregister_adb_tls_service() {
+    MdnsWorkerThread::Get().AddTask([] {
+        VLOG(MDNS) << "Unregistering tls service";
+        unregister_mdns_service(kADBSecureConnectServiceRefIndex);
+    });
 }
 
-bool is_adb_secure_connect_service_registered() {
+// TODO(b/421363980): Remove function, since we are mono-threaded.
+bool is_adb_tls_service_registered() {
     std::lock_guard<std::mutex> lock(mdns_lock);
     return mdns_registered[kADBSecureConnectServiceRefIndex];
 }

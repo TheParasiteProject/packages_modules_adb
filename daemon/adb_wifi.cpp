@@ -179,8 +179,6 @@ static void adbd_send_tls_server_port(uint16_t port) {
 }
 
 void enable_wifi_debugging() {
-    start_mdnsd();
-
     if (sTlsServer != nullptr) {
         delete sTlsServer;
     }
@@ -193,7 +191,7 @@ void enable_wifi_debugging() {
     }
 
     // Start mdns connect service for discovery
-    register_adb_secure_connect_service(sTlsServer->port());
+    register_adb_tls_service(sTlsServer->port());
     LOG(INFO) << "adb wifi started on port " << sTlsServer->port();
     adbd_send_tls_server_port(sTlsServer->port());
 }
@@ -203,8 +201,8 @@ void disable_wifi_debugging() {
         delete sTlsServer;
         sTlsServer = nullptr;
     }
-    if (is_adb_secure_connect_service_registered()) {
-        unregister_adb_secure_connect_service();
+    if (is_adb_tls_service_registered()) {
+        unregister_adb_tls_service();
     }
     kick_all_tcp_tls_transports();
     LOG(INFO) << "adb wifi stopped";
