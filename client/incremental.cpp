@@ -340,6 +340,11 @@ static bool wait_for_installation(int read_fd, std::string* error) {
         child_stdout.resize(len);
     }
 
+    printf("%s", child_stdout.c_str());
+    if (!child_stdout.ends_with('\n')) {
+        printf("\n");
+    }
+
     // wait till installation either succeeds or fails
     if (child_stdout.find("Success") != std::string::npos) {
         return true;
@@ -349,17 +354,15 @@ static bool wait_for_installation(int read_fd, std::string* error) {
     if (begin_itr != std::string::npos) {
         auto end_itr = child_stdout.rfind("]");
         if (end_itr != std::string::npos && end_itr >= begin_itr) {
-            *error = std::format(
-                    "Install failed: {}",
-                    std::string_view(child_stdout).substr(begin_itr, end_itr - begin_itr + 1));
+            *error = "Install failed";
             return false;
         }
     }
     if (child_stdout.length() == kMaxMessageSize) {
-        *error = std::format("Output too long: {}", child_stdout);
+        *error = "Output too long";
         return false;
     }
-    *error = std::format("Failed to parse output: {}", child_stdout);
+    *error = "Failed to parse output";
     return false;
 }
 
