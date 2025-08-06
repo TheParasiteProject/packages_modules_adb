@@ -33,17 +33,20 @@
 static bool in_tradeinmode = false;
 static constexpr char kTradeInModeProp[] = "persist.adb.tradeinmode";
 
-static constexpr int TIM_DISABLED = -1;
-static constexpr int TIM_UNSET = 0;
-static constexpr int TIM_FOYER = 1;
-static constexpr int TIM_EVALUATION_MODE = 2;
+enum TradeInModeState {
+    TIM_DISABLED = -1,
+    TIM_UNSET = 0,
+    TIM_FOYER = 1,
+    TIM_EVALUATION_MODE = 2,
+};
 
 bool should_enter_tradeinmode() {
 #if defined(__ANDROID__) && !defined(__ANDROID_RECOVERY__)
     if (!com_android_tradeinmode_flags_enable_trade_in_mode()) {
         return false;
     }
-    return android::base::GetIntProperty(kTradeInModeProp, TIM_UNSET) == TIM_FOYER;
+    return android::base::GetIntProperty(kTradeInModeProp, static_cast<int>(TIM_UNSET)) ==
+           static_cast<int>(TIM_FOYER);
 #else
     return false;
 #endif
@@ -55,7 +58,8 @@ void enter_tradeinmode(const char* seclabel) {
         PLOG(ERROR) << "Could not set SELinux context";
 
         // Flag TIM as failed so we don't enter a restart loop.
-        android::base::SetProperty(kTradeInModeProp, std::to_string(TIM_DISABLED));
+        android::base::SetProperty(kTradeInModeProp,
+                                   std::to_string(static_cast<int>(TIM_DISABLED)));
 
         _exit(1);
     }
@@ -71,7 +75,8 @@ bool is_in_tradeinmode() {
 }
 
 bool is_in_tradein_evaluation_mode() {
-    return android::base::GetIntProperty(kTradeInModeProp, TIM_UNSET) == TIM_EVALUATION_MODE;
+    return android::base::GetIntProperty(kTradeInModeProp, static_cast<int>(TIM_UNSET)) ==
+           static_cast<int>(TIM_EVALUATION_MODE);
 }
 
 bool allow_tradeinmode_command(std::string_view name) {

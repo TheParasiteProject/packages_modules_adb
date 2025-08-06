@@ -144,11 +144,11 @@ void TlsServer::OnFdEvent(int fd, unsigned ev) {
 
 TlsServer* sTlsServer = nullptr;
 
-const char kWifiEnabledProp[] = "persist.adb.tls_server.enable";
-
 // TODO(b/31559095): need bionic host so that we can use 'prop_info' returned
 // from WaitForProperty
 #if defined(__ANDROID__)
+const char kWifiEnabledProp[] = "persist.adb.tls_server.enable";
+
 // Pre API 37 control ADB Wifi TLSServer by toggling kWifiEnabledProp property
 static void start_wifi_enabled_observer() {
     std::thread([]() {
