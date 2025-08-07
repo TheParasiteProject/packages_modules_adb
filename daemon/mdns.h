@@ -23,6 +23,5 @@ void register_adb_tcp_service(int tcp_port);
 // mDNS advertises the TLS port ADBd is currently listening on for encrypted traffic.
 void register_adb_tls_service(int tls_port);
 void unregister_adb_tls_service();
-bool is_adb_tls_service_registered();
 
 #endif  // _DAEMON_MDNS_H_

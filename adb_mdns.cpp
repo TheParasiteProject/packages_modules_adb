@@ -89,15 +89,6 @@ void config_auto_connect_services() {
 
 }  // namespace
 
-std::optional<int> adb_DNSServiceIndexByName(std::string_view reg_type) {
-    for (int i = 0; i < kNumADBDNSServices; ++i) {
-        if (!strncmp(reg_type.data(), kADBDNSServices[i], strlen(kADBDNSServices[i]))) {
-            return i;
-        }
-    }
-    return std::nullopt;
-}
-
 bool adb_DNSServiceShouldAutoConnect(std::string_view reg_type, std::string_view service_name) {
     config_auto_connect_services();
 
@@ -121,3 +112,12 @@ bool adb_DNSServiceShouldAutoConnect(std::string_view reg_type, std::string_view
 }
 
 #endif  // ADB_HOST
+
+std::optional<int> adb_DNSServiceIndexByName(std::string_view reg_type) {
+    for (int i = 0; i < kNumADBDNSServices; ++i) {
+        if (!strncmp(reg_type.data(), kADBDNSServices[i], strlen(kADBDNSServices[i]))) {
+            return i;
+        }
+    }
+    return std::nullopt;
+}
