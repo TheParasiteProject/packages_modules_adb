@@ -77,7 +77,10 @@ int get_device_api_level() {
 
         std::string getprop_stdout, getprop_stderr;
         DefaultStandardStreamsCallback cb(&getprop_stdout, &getprop_stderr);
-        int status_code = send_shell_command("getprop ro.build.version.sdk", false, &cb);
+        int ret = send_shell_command("getprop ro.build.version.sdk", false, &cb);
+        if (ret != 0) {
+            return -1;
+        }
 
         int api_level;
         return android::base::ParseInt(getprop_stdout, &api_level) ? api_level : -1;
