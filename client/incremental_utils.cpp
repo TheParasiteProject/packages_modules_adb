@@ -345,17 +345,16 @@ static std::vector<int32_t> ZipPriorityBlocks(off64_t signerBlockOffset, Size fi
     return zip;
 }
 
-static std::pair<ZipArchiveHandle, std::unique_ptr<android::base::MappedFile>> openZipArchive(
+static std::pair<ZipArchiveHandle, std::optional<android::base::MappedFile>> openZipArchive(
         borrowed_fd fd, Size fileSize) {
 #ifndef __LP64__
     if (fileSize >= INT_MAX) {
-        return {openZipArchiveFd(fd), nullptr};
+        return {openZipArchiveFd(fd), std::nullopt};
     }
 #endif
-    auto mapping =
-            android::base::MappedFile::FromOsHandle(adb_get_os_handle(fd), 0, fileSize, PROT_READ);
+    auto mapping = android::base::MappedFile::Create(adb_get_os_handle(fd), 0, fileSize, PROT_READ);
     if (!mapping) {
-        D("%s failed at FromOsHandle: %d", __func__, errno);
+        D("%s failed at MappedFile::Create: %d", __func__, errno);
         return {};
     }
     ZipArchiveHandle zip;
