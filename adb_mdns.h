@@ -51,10 +51,10 @@ extern const char* _Nonnull kADBDNSServices[kNumADBDNSServices];
 extern const char* _Nonnull kADBDNSServiceTxtRecords[kNumADBDNSServices];
 
 #if ADB_HOST
-#include "client/openscreen/mdns_service_info.h"
+#include "client/discovered_services.h"
 // ADB Secure DNS service interface. Used to query what ADB Secure DNS services have been
 // resolved, and to run some kind of callback for each one.
-using adb_secure_foreach_service_callback = std::function<void(const mdns::ServiceInfo& si)>;
+using adb_secure_foreach_service_callback = std::function<void(const ServiceInfo& si)>;
 
 // Tries to connect to a |service_name| if found. Returns true if found and
 // connected, false otherwise.
@@ -66,9 +66,6 @@ bool adb_DNSServiceShouldAutoConnect(std::string_view service_name, std::string_
 
 std::string mdns_check();
 std::string mdns_list_discovered_services();
-
-std::optional<mdns::ServiceInfo> mdns_get_connect_service_info(const std::string& name);
-std::optional<mdns::ServiceInfo> mdns_get_pairing_service_info(const std::string& name);
 
 // Return the location where adb host stores paired devices
 std::string get_user_known_hosts_path();

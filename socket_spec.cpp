@@ -56,6 +56,10 @@ using android::base::StringPrintf;
 #include <sys/socket.h>
 #endif
 
+#if ADB_HOST
+#include "client/transport_mdns.h"
+#endif
+
 bool gListenAll = false;
 
 struct LocalSocketType {
