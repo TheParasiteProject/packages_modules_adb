@@ -189,7 +189,7 @@ static void adbd_send_tls_server_port(uint16_t port) {
 
 void enable_wifi_debugging() {
     if (sTlsServer != nullptr) {
-        delete sTlsServer;
+        return;
     }
     sTlsServer = new TlsServer(0);
     if (!sTlsServer->Start()) {
@@ -223,9 +223,6 @@ void adbd_wifi_init(AdbdAuthContext* ctx) {
     if (com_android_adbdauth_flags_use_tls_lifecycle()) {
         if (__builtin_available(android 37, *)) {
             LOG(INFO) << "wifi_init: Expecting lifecycle message over adbdauth";
-            if (android::base::GetProperty(kWifiEnabledProp, "") == "1") {
-                enable_wifi_debugging();
-            }
             return;
         }
     }
