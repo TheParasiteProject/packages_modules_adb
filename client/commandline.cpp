@@ -2185,11 +2185,11 @@ int adb_commandline(int argc, const char** argv) {
             }
         }
     } else if (!strcmp(argv[0], "inc-server")) {
-        if (argc < 4) {
+        if (argc < 3) {
 #ifdef _WIN32
-            error_exit("usage: adb inc-server CONNECTION_HANDLE OUTPUT_HANDLE FILE1 FILE2 ...");
+            error_exit("usage: adb inc-server CONNECTION_HANDLE OUTPUT_HANDLE [FILE1 FILE2 ...]");
 #else
-            error_exit("usage: adb inc-server CONNECTION_FD OUTPUT_FD FILE1 FILE2 ...");
+            error_exit("usage: adb inc-server CONNECTION_FD OUTPUT_FD [FILE1 FILE2 ...]");
 #endif
         }
         int connection_fd = atoi(argv[1]);
