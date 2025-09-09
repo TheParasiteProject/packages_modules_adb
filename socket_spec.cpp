@@ -187,6 +187,20 @@ bool is_local_socket_spec(std::string_view spec) {
     return tcp_host_is_local(hostname);
 }
 
+bool check_adb_vsock_port(int port, std::string* error) {
+#if !ADB_HOST
+    if (port != DEFAULT_ADB_LOCAL_TRANSPORT_PORT) {
+        *error = android::base::StringPrintf(
+                "Only port %d is supported for vsock connections. Got %d.",
+                DEFAULT_ADB_LOCAL_TRANSPORT_PORT, port);
+        return false;
+    }
+    return true;
+#else
+    return true;
+#endif
+}
+
 bool socket_spec_connect(unique_fd* fd, std::string_view address, int* port, std::string* serial,
                          std::string* error) {
 #if !ADB_HOST
@@ -273,6 +287,10 @@ bool socket_spec_connect(unique_fd* fd, std::string_view address, int* port, std
         }
         if (port_value == 0) {
             *error = android::base::StringPrintf("vsock port was not provided.");
+            errno = EINVAL;
+            return false;
+        }
+        if (!check_adb_vsock_port(port_value, error)) {
             errno = EINVAL;
             return false;
         }
